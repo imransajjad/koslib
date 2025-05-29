@@ -23,17 +23,17 @@
                 "PITCH_SPECIFIC_INERTIA", 80,
                 "PR_KP",2.5,
                 "PR_KI",5.1,
-                "PR_KD",0.2,
+                "PR_KD",0.0,
                 "YR_KP",7.5,
                 "YR_KI",0.0,
                 "YR_KD",0.0,
                 "RR_KP",0.075,
-                "RR_KI",0.0,
+                "RR_KI",0.09,
                 "RR_KD",0.0,
 
                 "K_PITCH", 0.95,
                 "K_YAW", 0.95,
-                "K_ROLL", 0.75,
+                "K_ROLL", 1.75,
 
                 "USE_GCAS", true,
                 "GCAS_MARGIN", 30,
@@ -54,7 +54,7 @@
             ],
             "$type": "kOS.Safe.Encapsulation.Lexicon"
         },
-        "AP_NAV",
+        "AP_NAV_SRF",
         {
             "entries": [
                 "ROT_GNOM_VERT", 0.5,
@@ -67,7 +67,13 @@
                 "BANK_MAX", 30,
                 "TAIL_STRIKE", 7.5,
                 "VSET_MAX", 350,
-                "GEAR_HEIGHT", 3.8
+                "GEAR_HEIGHT", 5.7
+            ],
+            "$type": "kOS.Safe.Encapsulation.Lexicon"
+        },
+        "AP_NAV_TAR",
+        {
+            "entries": [
             ],
             "$type": "kOS.Safe.Encapsulation.Lexicon"
         },
@@ -76,8 +82,7 @@
             "entries": [
                 "FLCS_ENABLED", true,
                 "VEL_ENABLED", true,
-                "NAV_ENABLED", true,
-                "NONE_ENABLED", true
+                "NAV_ENABLED", true
             ],
             "$type": "kOS.Safe.Encapsulation.Lexicon"
         },

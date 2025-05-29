@@ -20,15 +20,13 @@
 
 GLOBAL UTIL_WP_ENABLED IS true.
 
-local PARAM is readJson("1:/param.json").
-
-local USE_AP_NAV is PARAM:haskey("AP_NAV").
+local PARAM is readJson("param.json").
 
 local NOM_NAV_G is 1.0.
 local GCAS_ALTITUDE is 0.0.
 
-if PARAM:haskey("AP_NAV") {
-    set NOM_NAV_G to get_param(PARAM["AP_NAV"], "ROT_GNOM_VERT", NOM_NAV_G).
+if PARAM:haskey("AP_NAV_SRF") {
+    set NOM_NAV_G to get_param(PARAM["AP_NAV_SRF"], "ROT_GNOM_VERT", NOM_NAV_G).
 }
 if PARAM:haskey("AP_AERO_W") and get_param(PARAM["AP_AERO_W"], "USE_GCAS", false) {
     set GCAS_ALTITUDE to get_param(PARAM["AP_AERO_W"], "GCAS_MARGIN", GCAS_ALTITUDE).
@@ -243,7 +241,7 @@ local function generate_landing_seq {
 
     local lat_stp is -0.0493672258730508.
     local lng_stp is -74.6115615766677.
-    local alt_stp is latlng(lat_stp,lng_stp):terrainheight+1.0.
+    local alt_stp is latlng(lat_stp,lng_stp):terrainheight+0.0.
 
     local stop_dist is 1000.
     set GSlope to abs(GSlope).

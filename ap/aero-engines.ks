@@ -184,8 +184,9 @@ local function turbojet_throttle_auto {
 
 
 local forward_thrust is true.
+
 local function turbofan_common {
-    if my_throttle <= 0.0 and brakes and ship:airspeed > 25 and abs(vel_pitch) < 2.5 {
+    if my_throttle <= 0.001 and brakes and ship:airspeed > 10 and abs(vel_pitch) < 2.5 {
         if forward_thrust {
             set forward_thrust to false.
             for e in MAIN_ENGINES {
@@ -195,13 +196,14 @@ local function turbofan_common {
     } else {
         if not forward_thrust {
             set forward_thrust to true.
+            set ship:control:mainthrottle to 0.0.
             for e in MAIN_ENGINES {
                 e:getmodule("ModuleAnimateGeneric"):doaction("toggle thrust reverser", true).
             }
         }
     }
     if not forward_thrust {
-        SET SHIP:CONTROL:MAINTHROTTLE to 1.0.
+        set ship:control:mainthrottle to min(1.0,max(0.0,(line_map(15,30,0.0,1.0, ship:airspeed)))).
     }
 }
 
@@ -217,7 +219,7 @@ function ap_aero_engine_throttle_auto {
         attempt_restart().
         set SHIP:CONTROL:MAINTHROTTLE to auto_throttle_func(GCAS_SPEED).
     } else {
-        set SHIP:CONTROL:MAINTHROTTLE to auto_throttle_func(vel_r:mag, acc_r*ship:srfprograde:vector).
+        set SHIP:CONTROL:MAINTHROTTLE to auto_throttle_func(vel_r*ship:facing:forevector, acc_r*ship:srfprograde:vector).
     }
     common_func().
 }

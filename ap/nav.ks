@@ -18,6 +18,7 @@ local body_navchange_alt is get_param(BODY_navball_change_alt, ship:body:name, 3
 local DISPLAY_SRF is false.
 local DISPLAY_ORB is false.
 local DISPLAY_TAR is false.
+local DISPLAY_MIS is false.
 
 local DISPLAY_HUD_VEL is false.
 local CLEAR_HUD_VEL is false.
@@ -96,16 +97,25 @@ function ap_nav_display {
     } else if AP_NAV_IN_SURFACE and defined AP_NAV_SRF_ENABLED and ap_nav_srf_stick() {
         set DISPLAY_SRF to true.
 
+    } else if defined AP_NAV_MISSILE_ENABLED and ap_nav_missile_guide() {
+        set DISPLAY_MIS to true.
+
     } else {
         set AP_NAV_VEL to ap_nav_get_vessel_vel().
         set AP_NAV_ACC to V(0,0,0).
         set AP_NAV_ATT to ship:facing.
         set CLEAR_HUD_VEL to true.
     }
-    set DISPLAY_HUD_VEL to (DISPLAY_TAR or DISPLAY_SRF).
+    set DISPLAY_HUD_VEL to (DISPLAY_TAR or DISPLAY_SRF or DISPLAY_MIS).
     // set AP_NAV_VEL to AP_NAV_VEL + ship:facing*ship:control:pilottranslation.
     // all of the above functions can contribute to setting
     // AP_NAV_VEL, AP_NAV_ACC, AP_NAV_ATT
+
+    if false {
+        util_hud_push_left("ap_nav", "v_n: " + round_vec((-ship:facing)*(AP_NAV_VEL),1) + char(10) + 
+                                    "v_nd: " + round_vec((-ship:facing)*(AP_NAV_VEL-ap_nav_get_vessel_vel()),1) + char(10) + 
+                                    "a_n: " + round_vec((-ship:facing)*(AP_NAV_ACC),1)  ).
+    }
 
     if false {
         if HASTARGET {
@@ -115,6 +125,8 @@ function ap_nav_display {
             set nav_debug_vec_vel to VECDRAW(V(0,0,0), 30*ap_nav_get_vessel_vel(), RGB(0,1,0),
                 "", 1.0, true, 0.5, true ).
         }
+        set nav_debug_vec_vel to VECDRAW(V(0,0,0), (AP_NAV_VEL), RGB(0,1,0),
+            "", 1.0, true, 0.5, true ).
         set nav_debug_vec_vel_err to VECDRAW(V(0,0,0), 30*(AP_NAV_VEL-ap_nav_get_vessel_vel()), RGB(1,0,0),
             "", 1.0, true, 0.5, true ).
         set nav_debug_vec_acc to VECDRAW(V(0,0,0), 30*AP_NAV_ACC, RGB(1,1,0),
@@ -181,6 +193,10 @@ function ap_nav_status_string {
     if DISPLAY_TAR {
         set DISPLAY_TAR to false.
         return ap_nav_tar_status_string().
+    }
+    if DISPLAY_MIS {
+        set DISPLAY_MIS to false.
+        return ap_nav_missile_status_string().
     }
     return "".
 }

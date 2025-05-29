@@ -36,6 +36,16 @@ function convex {
     return (1-e)*X + e*Y.
 }
 
+function line_map {
+    parameter x1.
+    parameter x2.
+    parameter y1.
+    parameter y2.
+    parameter x.
+    
+    return  (y2*(x-x1) + y1*(x2-x))/(x2-x1).
+}
+
 function sign {
     parameter x.
     if X > 0 { return 1.0.}

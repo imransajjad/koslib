@@ -35,7 +35,7 @@ fetch_and_run("0:/koslib/util/hud.ks").
 fetch_and_run("0:/koslib/ap/me.ks").
 fetch_and_run("0:/koslib/ap/orb.ks").
 fetch_and_run("0:/koslib/ap/nav.ks").
-fetch_and_run("0:/koslib/ap/missile.ks").
+fetch_and_run("0:/koslib/ap/nav/missile.ks").
 
 add_plane_globals().
 
@@ -43,10 +43,10 @@ util_shsys_set_spin("engine", true).
 
 
 until util_shsys_check() {
-    ap_missile_guide().
+    ap_nav_missile_guide().
     wait 0.02.
 }
-ap_missile_guide_cleanup().
+ap_nav_missile_guide_cleanup().
 
 util_shsys_do_action("lock_target").
 
@@ -66,11 +66,6 @@ util_shsys_do_action("decouple").
 print get_com_offset().
 
 util_shbus_set_ship_router(true).
-util_shsys_set_spin("separate",true).
-
-util_shsys_spin_check().
-
-util_shsys_do_action("thrust_max").
 
 until false {
     get_plane_globals().
@@ -79,8 +74,7 @@ until false {
     util_shsys_spin_check().
     util_phys_update().
 
-    // ap_nav_display().
-    ap_missile_guide().
+    ap_nav_display().
 
     ap_orb_nav_do().
 

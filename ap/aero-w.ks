@@ -384,7 +384,7 @@ function ap_aero_w_nav_do {
     
     // omega applied by us
     // local w_us is wff + werr.
-    local w_us is w_v + w_R.
+    local w_us is w_v + 0*w_R.
     // omega applied by us compensating for gravity for deciding roll
     local w_usg is w_us - wg.
     local g_hav is haversine(0,0, -w_usg:x, w_usg:y).

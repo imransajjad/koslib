@@ -83,3 +83,12 @@ function ap_me_throttle {
     }
     set SHIP:CONTROL:MAINTHROTTLE to input_throttle.
 }
+
+function ap_me_limit_set {
+    parameter lim.
+    list engines in engine_list.
+
+    for i in engine_list {
+        set i:thrustlimit to lim.
+    }
+}

@@ -33,9 +33,9 @@ set SETTINGS["COLOR"] to RGB(get_param(PARAMS, "COLOR_R", 0),
 set SETTINGS["PITCH_DIV"] to get_param(PARAMS, "PITCH_DIV", 5).
 set SETTINGS["FLARE_ALT"] to get_param(PARAMS, "FLARE_ALT", 20).
 set SETTINGS["SHIP_HEIGHT"] to get_param(PARAMS, "SHIP_HEIGHT", 2).
-local PARAM_NAV is get_param(readJson("param.json"),"AP_NAV", lexicon()).
+local PARAM_NAV is get_param(readJson("param.json"),"AP_NAV_SRF", lexicon()).
 if PARAM_NAV:haskey("GEAR_HEIGHT") {
-    set SHIP_HEIGHT to get_param(PARAM_NAV, "GEAR_HEIGHT", 2).
+    set SETTINGS["SHIP_HEIGHT"] to get_param(PARAM_NAV, "GEAR_HEIGHT", 2).
 }
 
 // Load saved settings

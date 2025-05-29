@@ -98,6 +98,8 @@ function get_applied_acc {
 function get_aero_acc {
     if defined AP_AERO_ENGINES_ENABLED {
         return get_acc() - GRAV_ACC - ap_aero_engines_get_current_thrust()/ship:mass.
+    } else if defined AP_ME_ENABLED {
+        return get_acc() - GRAV_ACC - ship:facing*ap_me_get_thrust()/ship:mass.
     } else {
         return get_acc() - GRAV_ACC.
     }
@@ -159,6 +161,12 @@ local function aero_rls_update {
 
     set A_fues to A_fues + (A_22*diff1 - A_21_12*diff2)/disc.
     set A_wing to A_wing + (-A_21_12*diff1 + A_11*diff2)/disc.
+
+    if false {
+        util_hud_push_left("aero_rls_update",
+                char(10) + "A_wing " + round_fig(A_wing,3) +
+                char(10) + "A_fues " + round_fig(A_fues,3)).
+    }
 
     if false {
         local error is (-ship_vel_dir)*get_aero_acc() - ( A_fues*e_fues + A_wing*e_wing).
@@ -277,6 +285,8 @@ local function moi_update {
                     char(10) + "MOI:x " + round_fig(moi:x,3) +
                     char(10) + "MOI:y " + round_fig(moi:y,3) +
                     char(10) + "MOI:z " + round_fig(moi:z,3) +
+                    char(10) + "A_wing " + round_fig(A_wing,3) +
+                    char(10) + "A_fues " + round_fig(A_fues,3) +
                     char(10) + "aw " + round_dec(ang_acc:mag,1)).
 }
 
