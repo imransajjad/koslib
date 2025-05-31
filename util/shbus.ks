@@ -141,7 +141,7 @@ function util_shbus_parse_command {
     } else if commtext:startswith("rst") {
         util_shbus_tx_msg("HOSTRST").
     } else if commtext:startswith("tx"){
-        if not (args = -1) and args:length >= 2 {
+        if not (args = -1) and args:length >= 1 {
             util_shbus_tx_msg(args[0],args:sublist(1,args:length-1)).
         } else {
             print "usage: host tx(OP_CODE, DATA)".
@@ -333,6 +333,7 @@ local function util_shbus_decode_rx_msg {
         if defined UTIL_HUD_ENABLED {tags:add("HUD").}
         if defined UTIL_RADAR_ENABLED {tags:add("RADAR").}
         if defined UTIL_DEV_ENABLED {tags:add("DEV").}
+        if defined UTIL_PHYS_ENABLED {tags:add("PHYS").}
         util_shbus_ack("tags: " + char(10) + "  " + tags:join(char(10)+"  "), sender).
     } else if opcode = "HOSTRST" {
         util_shbus_ack("rebooting!", sender).
@@ -403,6 +404,8 @@ local function rx_msg {
                 print "shsys decoded".
             } else if defined UTIL_HUD_ENABLED and util_hud_decode_rx_msg(sender, recipient, opcode, data) {
                 print "hud decoded".
+            } else if defined UTIL_PHYS_ENABLED and util_phys_decode_rx_msg(sender, recipient, opcode, data) {
+                print "phys decoded".
             } else {
                 print "Unexpected message from "+received_msg:SENDER:NAME +
                 "("+ received_msg:SENDER+"): " + received_msg:CONTENT.

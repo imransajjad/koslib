@@ -30,6 +30,7 @@ fetch_and_run("0:/koslib/util/shbus.ks").
 fetch_and_run("0:/koslib/util/radar.ks").
 fetch_and_run("0:/koslib/util/term.ks").
 fetch_and_run("0:/koslib/util/hud.ks").
+fetch_and_run("0:/koslib/util/phys.ks").
 
 GLOBAL BOOT_FLCOM_ENABLED IS true.
 

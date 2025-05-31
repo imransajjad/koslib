@@ -1,12 +1,46 @@
 
+global UTIL_PHYS_ENABLED is true.
+
 local PARAM is get_param(readJson("param.json"),"UTIL_PHYS", lexicon()).
+
+// Load saved settings
+if exists("phys-settings.json") {
+    local PREV_SETTINGS is readJson("phys-settings.json").
+    for key in PREV_SETTINGS:keys {
+        set PARAM[key] to PREV_SETTINGS[key].
+        print "setting " + key +" to "+ PREV_SETTINGS[key].
+    }
+}
 
 local C_SCHED_TYPE is get_param(PARAM, "C_SCHED_TYPE", "FS3T").
 
-local A_wing is get_param(PARAM, "WING_AREA", 20).
-local A_fues is get_param(PARAM, "FUES_AREA", 2).
 local A_ffactor is get_param(PARAM, "FORGET_FACTOR_AREA", 0.9).
 local MOI_ffactor is get_param(PARAM, "FORGET_FACTOR_MOI", 0.9999).
+
+local A_wing is get_param(PARAM, "WING_AREA", 20).
+local A_fues is get_param(PARAM, "FUES_AREA", 2).
+local MOI is V(
+    get_param(PARAM, "MOI_XX", 1),
+    get_param(PARAM, "MOI_YY", 1),
+    get_param(PARAM, "MOI_ZZ", 1)
+). // V(xx, yy, zz)
+
+local AERO_ADAPT is get_param(PARAM, "AERO_ADAPT", true).
+local MOI_ADAPT is get_param(PARAM, "MOI_ADAPT", true).
+local DISPLAY_ON is get_param(PARAM, "DISPLAY_ON", true).
+
+
+local function settings_save {
+    set PARAM["WING_AREA"] to A_wing.
+    set PARAM["FUES_AREA"] to A_fues.
+    set PARAM["MOI_XX"] to MOI:x.
+    set PARAM["MOI_YY"] to MOI:y.
+    set PARAM["MOI_ZZ"] to MOI:z.
+    set PARAM["AERO_ADAPT"] to AERO_ADAPT.
+    set PARAM["MOI_ADAPT"] to MOI_ADAPT.
+    set PARAM["DISPLAY_ON"] to DISPLAY_ON.
+    writeJson(PARAM, "phys-settings.json").
+}
 
 // global lock GRAV_ACC to -(ship:body:mu/((ship:altitude + ship:body:radius)^2))*ship:up:forevector.
 global lock GRAV_ACC to ship:body:mu/(ship:body:position:mag^2)*(ship:body:position:normalized).
@@ -163,12 +197,6 @@ local function aero_rls_update {
     set A_wing to A_wing + (-A_21_12*diff1 + A_11*diff2)/disc.
 
     if false {
-        util_hud_push_left("aero_rls_update",
-                char(10) + "A_wing " + round_fig(A_wing,3) +
-                char(10) + "A_fues " + round_fig(A_fues,3)).
-    }
-
-    if false {
         local error is (-ship_vel_dir)*get_aero_acc() - ( A_fues*e_fues + A_wing*e_wing).
         util_hud_push_left("get_pre_aero_acc", "eA " + round_dec(error:x,2) + "," + round_dec(error:y,2) + "," + round_dec(error:z,2) +
             char(10) + "A f/w " + round_dec(A_fues,0) + "/" + round_dec(A_wing,0)).
@@ -224,14 +252,13 @@ function get_sus_turn_rate {
 }
 
 local moi_stage is stage:number.
-local moi is V(0,0,0). // V(xx, yy, zz)
 local moi_cross is V(0,0,0). // V(xy, yz, xz)
 local moi_mass is ship:mass.
 local moi_update_acc_2 is V(0,0,0).
 local function init_moi {
     // some MOI_spec calculations from scratch
     
-    set moi to V(0,0,0).
+    set MOI to V(0,0,0).
     set moi_cross to V(0,0,0).
     set moi_mass to ship:mass.
 
@@ -241,7 +268,7 @@ local function init_moi {
         local vdiag is V(offset:y^2 + offset:z^2, offset:x^2 + offset:z^2, offset:x^2 + offset:y^2).
         local vcross is V(offset:y*offset:z, offset:x*offset:z, offset:x*offset:y).
 
-        set moi to moi + pt:mass*vdiag + ship:mass*V(0.05,0.05,0.05).
+        set MOI to MOI + pt:mass*vdiag + ship:mass*V(0.05,0.05,0.05).
         set moi_cross to moi_cross + pt:mass*vcross.
     }
 
@@ -257,49 +284,208 @@ local function moi_update {
     local ang_acc is (-ship:facing)*get_angular_acc(). // angular acc in ship frame
     local B is ap_get_control_bu().
 
-    if moi:x <= 0 or moi:y <= 0 or moi:z <= 0 {
+    if MOI:x <= 0 or MOI:y <= 0 or MOI:z <= 0 {
         init_moi().
     }
 
     if moi_stage <> stage:number {
         set moi_stage to stage:number.
-        set moi to moi*ship:mass/moi_mass.
+        set MOI to MOI*ship:mass/moi_mass.
     }
     set moi_mass to ship:mass.
 
     local dI is V(0,0,0).
-    if abs(1.03*ang_acc:x) > ang_acc:mag and ang_acc:mag > 0.05*B:x/moi:x {
+    if abs(1.03*ang_acc:x) > ang_acc:mag and ang_acc:mag > 0.05*B:x/MOI:x {
         set moi_update_acc_2:x to MOI_ffactor*moi_update_acc_2:x + ang_acc:x^2.
-        set dI:x to (-ang_acc:x*B:x*ship:control:pitch - moi:x*ang_acc:x^2)/moi_update_acc_2:x.
+        set dI:x to (-ang_acc:x*B:x*ship:control:pitch - MOI:x*ang_acc:x^2)/moi_update_acc_2:x.
     }
-    if abs(1.03*ang_acc:y) > ang_acc:mag and ang_acc:mag > 0.05*B:y/moi:y {
+    if abs(1.03*ang_acc:y) > ang_acc:mag and ang_acc:mag > 0.05*B:y/MOI:y {
         set moi_update_acc_2:y to MOI_ffactor*moi_update_acc_2:y + ang_acc:y^2.
-        set dI:y to (ang_acc:y*B:y*ship:control:yaw - moi:y*ang_acc:y^2)/moi_update_acc_2:y.
+        set dI:y to (ang_acc:y*B:y*ship:control:yaw - MOI:y*ang_acc:y^2)/moi_update_acc_2:y.
     }
-    if abs(1.03*ang_acc:z) > ang_acc:mag and ang_acc:mag > 0.05*B:z/moi:z {
+    if abs(1.03*ang_acc:z) > ang_acc:mag and ang_acc:mag > 0.05*B:z/MOI:z {
         set moi_update_acc_2:z to MOI_ffactor*moi_update_acc_2:z + ang_acc:z^2.
-        set dI:z to (-ang_acc:z*B:z*ship:control:roll - moi:z*ang_acc:z^2)/moi_update_acc_2:z.
+        set dI:z to (-ang_acc:z*B:z*ship:control:roll - MOI:z*ang_acc:z^2)/moi_update_acc_2:z.
     }
-    set moi to moi + dI.
-    util_hud_push_left("phys_moi_update",
-                    char(10) + "MOI:x " + round_fig(moi:x,3) +
-                    char(10) + "MOI:y " + round_fig(moi:y,3) +
-                    char(10) + "MOI:z " + round_fig(moi:z,3) +
-                    char(10) + "A_wing " + round_fig(A_wing,3) +
-                    char(10) + "A_fues " + round_fig(A_fues,3) +
-                    char(10) + "aw " + round_dec(ang_acc:mag,1)).
+    set MOI to MOI + dI.
+
 }
 
 function get_moment_of_inertia {
-    return V(moi:x,moi:y,moi:z).
+    return V(MOI:x,MOI:y,MOI:z).
     // return V(0.412,0.412,0.291).
 }
 
 function util_phys_update {
-    if ship:q > 0.0003 and not BRAKES and alpha > 0 and alpha < 45 and get_jerk():mag < 1.5 {
+
+    local do_update is false.
+
+    if AERO_ADAPT and ship:q > 0.0003 and not BRAKES and alpha > 0 and alpha < 45 and get_jerk():mag < 1.5 {
         aero_rls_update().
+        set do_update to true.
     }
-    if defined AP_ORB_ENABLED {
+    if MOI_ADAPT and defined AP_ORB_ENABLED {
         moi_update().
+        set do_update to true.
+    }
+
+    if do_update {
+        display_udpate().
     }
 }
+
+local function display_udpate {
+    if not (defined UTIL_HUD_ENABLED) {
+        return.
+    }
+    if DISPLAY_ON {
+        util_hud_push_left("util_phys",
+            char(10) + "A_wing " + round_fig(A_wing,3) +
+            char(10) + "A_fues " + round_fig(A_fues,3) +
+            char(10) + "MOI:x " + round_fig(MOI:x,3) +
+            char(10) + "MOI:y " + round_fig(MOI:y,3) +
+            char(10) + "MOI:z " + round_fig(MOI:z,3)).
+    } else {
+        util_hud_pop_left("util_phys").
+    }
+}
+
+// shbus_tx compatible send messages
+// TX_SECTION
+
+function util_phys_get_help_str {
+    return list(
+        "UTIL_PHYS running on "+core:tag,
+        "phys load",
+        "phys commit",
+        "phys reset",
+        "phys aero set (A_wing,A_fues)",
+        "phys moi set (Ix,Iy,Iz)",
+        "phys aero get",
+        "phys moi get",
+        "phys [setting] [on/off]",
+        "     aero",
+        "     moi",
+        "     display",
+        "phys help           print help"
+        ).
+}
+
+function util_phys_parse_command {
+    parameter commtext.
+    parameter args is list().
+
+    if commtext:startswith("phys ") {
+        set commtext to commtext:remove(0,5).
+    } else {
+        return false.
+    }
+    local word_0 is "".
+    local word_1 is "".
+    local words is commtext:split(" ").
+    if words:length = 2 {
+        set word_0 to words[0]. // reset or moi/aero/display
+        set word_1 to words[1]. // on/off/get/set
+    }
+
+    if commtext = "load" {
+        util_shbus_tx_msg("PHYS_LOAD").
+    } else if commtext = "reset" {
+        util_shbus_tx_msg("PHYS_RESET",list()).
+    } else if word_1 = "on" or word_1 = "off" {
+        if words:length > 2 {
+            print "usage: phys [setting] [on/off]".
+        } else {
+            util_shbus_tx_msg("PHYS_SETTING_SET", list(word_0, (word_1 = "on") ) ).
+        }
+    } else if word_1 = "get" {
+        if word_0 = "aero" {
+            util_shbus_tx_msg("PHYS_AERO_GET").
+        } else if word_0 = "moi" {
+            util_shbus_tx_msg("PHYS_MOI_GET").
+        } else {
+            print "usage: phys aero get".
+            print "       phys moi get".
+        }
+    } else if word_1 = "set" and all_scalar(args) {
+        if word_0 = "aero" and args:length = 2 {
+            util_shbus_tx_msg("PHYS_AERO_SET", args).
+        } else if word_0 = "moi" and args:length = 3 {
+            util_shbus_tx_msg("PHYS_MOI_SET", args ).
+        } else {
+            print "usage: phys aero set (A_wing,A_fues)".
+            print "       phys moi set (Ix,Iy,Iz)".
+        }
+    } else if commtext = "commit" {
+        util_shbus_tx_msg("PHYS_COMMIT").
+    } else if commtext = "help" {
+        util_term_parse_command("help PHYS").
+    } else {
+        return false.
+    }
+    return true.
+}
+
+// TX_SECTION END
+
+
+// RX SECTION
+
+// shbus_rx compatible receive message
+function util_phys_decode_rx_msg {
+    parameter sender.
+    parameter recipient.
+    parameter opcode.
+    parameter data.
+
+    if not opcode:startswith("PHYS") {
+        return false.
+    }
+
+    if opcode = "PHYS_RESET" {
+        deletepath("phys-settings.json").
+    } else if opcode = "PHYS_LOAD" {
+        set A_wing to get_param(PARAM, "WING_AREA", 20).
+        set A_fues to get_param(PARAM, "FUES_AREA", 2).
+        set MOI to V(
+            get_param(PARAM, "MOI_XX", 1),
+            get_param(PARAM, "MOI_YY", 1),
+            get_param(PARAM, "MOI_ZZ", 1)
+        ). // V(xx, yy, zz)
+        set AERO_ADAPT to get_param(PARAM, "AERO_ADAPT", true).
+        set MOI_ADAPT to get_param(PARAM, "MOI_ADAPT", true).
+        set DISPLAY_ON to get_param(PARAM, "DISPLAY_ON", true).
+
+    } else if opcode = "PHYS_SETTING_SET" {
+        if data[0] = "aero" {
+            set AERO_ADAPT to data[1].
+        } else if data[0] = "moi" {
+            set MOI_ADAPT to data[1].
+        } else if data[0] = "display" {
+            set DISPLAY_ON to data[1].
+        }
+    } else if opcode = "PHYS_AERO_GET" {
+        util_shbus_ack("A_wing " + round_fig(A_wing,3) + ",A_fues " + round_fig(A_fues,3), sender).
+    } else if opcode = "PHYS_MOI_GET" {
+        util_shbus_ack("moi " + round_vec(MOI,3), sender).
+    } else if opcode = "PHYS_AERO_SET" {
+        set A_wing to data[0].
+        set A_fues to data[1].
+        util_shbus_ack("A_wing " + round_fig(A_wing,3) + ",A_fues " + round_fig(A_fues,3), sender).
+    } else if opcode = "PHYS_MOI_SET" {
+        set MOI:x to data[0].
+        set MOI:y to data[1].
+        set MOI:z to data[2].
+        util_shbus_ack("moi " + round_vec(MOI,3), sender).
+    } else if opcode = "PHYS_COMMIT" {
+        settings_save().
+    } else {
+        util_shbus_ack("could not decode phys rx msg", sender).
+        print "could not decode phys rx msg".
+        return false.
+    }
+    display_udpate().
+    return true.
+}
+
+// RX SECTION END

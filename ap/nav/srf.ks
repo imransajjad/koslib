@@ -180,9 +180,7 @@ function ap_nav_srf_wp_guide {
 
     local align_data is list().
     if wp:haskey("lat") {
-        local wp_vec is
-            latlng(wp["lat"],wp["lng"]):altitudeposition(wp["alt"]+
-            (choose GEAR_HEIGHT if GEAR else 0)).
+        local wp_vec is latlng(wp["lat"],wp["lng"]):altitudeposition(wp["alt"]) - get_gear_vec(GEAR_HEIGHT).
 
         local geo_distance is (ship:body:radius+ship:altitude)*DEG2RAD*
             haversine(ship:geoposition:lat,ship:geoposition:lng, wp["lat"],wp["lng"])[1].

@@ -119,6 +119,8 @@ function util_term_parse_command {
             print_help_page(util_hud_get_help_str()).
         } else if defined UTIL_RADAR_ENABLED and (tags:add("RADAR") = 0) and commtext:contains("RADAR") {
             print_help_page(util_radar_get_help_str()).
+        } else if defined UTIL_PHYS_ENABLED and (tags:add("PHYS") = 0) and commtext:contains("PHYS") {
+            print_help_page(util_phys_get_help_str()).
         } else if defined UTIL_DEV_ENABLED and (tags:add("DEV") = 0) and commtext:contains("DEV") {
             print_help_page(util_dev_get_help_str()).
         } else if commtext:contains("tags") {
@@ -229,6 +231,8 @@ local function parse_command {
             print("hud parsed").
         } else if defined UTIL_RADAR_ENABLED and util_radar_parse_command(commtext,args) {
             print("radar parsed").
+        } else if defined UTIL_PHYS_ENABLED and util_phys_parse_command(commtext,args) {
+            print("phys parsed").
         //} else if util_dev_parse_command(commtext,args) {
         //  print "dev parsed".
         } else {

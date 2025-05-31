@@ -497,6 +497,41 @@ function display_land_stats {
     }
 }
 
+local gear_start_vec is V(0,0,10000).
+local gear_rot_vec is V(0,0,0).
+function get_gear_vec {
+    parameter g_height.
+
+    if (gear_start_vec:z = 10000) {
+        for part in ship:parts {
+            if part:hasmodule("ModuleWheelBase") {
+                if ((-ship:facing)*part:position):z < gear_start_vec:z {
+                    set gear_start_vec to (-ship:facing)*(part:position).
+                    set gear_rot_vec to ((-ship:facing)*part:rotation):topvector.
+                    set gear_start_vec:x to 0.
+                    set gear_rot_vec:x to 0.
+                }
+            }
+        }
+        if (gear_start_vec:z = 10000) {
+            set gear_start_vec to V(0,0,0).
+        }
+    }
+
+    // print "gear_start_vec: " + round_vec((gear_start_vec),2).
+    // print "gear_rot_vec: " + round_vec((gear_rot_vec),2).
+    // print "get_gear_vec: " + round_vec((gear_start_vec - g_height*gear_rot_vec),2).
+    // print "ship:altitude " + round_fig(ship:altitude,3). 
+    // print "ship:terrainheight " + round_fig(max(ship:geoposition:terrainheight,0),3). 
+    // print "alt  " + round_fig( (ship:facing*(gear_start_vec - g_height*gear_rot_vec))*ship:body:position:normalized,3).
+    // print " ".
+    if GEAR {
+        return ship:facing*(gear_start_vec - g_height*gear_rot_vec) - ship:controlpart:position.
+    } else {
+        return V(0,0,0).
+    }
+}
+
 // Global plane data
 function add_plane_globals {
     when true then {

@@ -219,7 +219,7 @@ function ap_aero_engine_throttle_auto {
         attempt_restart().
         set SHIP:CONTROL:MAINTHROTTLE to auto_throttle_func(GCAS_SPEED).
     } else {
-        set SHIP:CONTROL:MAINTHROTTLE to auto_throttle_func(vel_r*ship:facing:forevector, acc_r*ship:srfprograde:vector).
+        set SHIP:CONTROL:MAINTHROTTLE to auto_throttle_func( vel_r:mag, acc_r*ship:srfprograde:vector).
     }
     common_func().
 }

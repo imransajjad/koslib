@@ -395,7 +395,7 @@ local function lr_text_info {
             set vel_displayed to ">> " + round_dec(round_fig(ship:velocity:surface:mag,2),2).
             
             set alt_head_str to
-                    (choose round_dec(ship:altitude-max(ship:geoposition:terrainheight,0)-SHIP_HEIGHT,1) +" ^_"
+                    (choose round_fig(ship:altitude-max(ship:geoposition:terrainheight,0) - get_gear_vec(SHIP_HEIGHT)*ship:body:position:normalized,1) +" ^_"
                     if (GEAR or HUD_AGL) else round_dec(ship:altitude,0)+" <|" ) +
                     char(10) + round_dec(vel_bear,0) +" -O ".
         } else if (NAVMODE = "TARGET") and HASTARGET {
@@ -569,7 +569,7 @@ function util_hud_get_help_str {
         "     nav",
         "     movable",
         "     ground_alt",
-        "     frame time",
+        "     frame_time",
         "hud help           print help"
         ).
 }

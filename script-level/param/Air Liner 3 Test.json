@@ -67,7 +67,7 @@
                 "BANK_MAX", 30,
                 "TAIL_STRIKE", 7.5,
                 "VSET_MAX", 350,
-                "GEAR_HEIGHT", 5.7
+                "GEAR_HEIGHT", 2.4
             ],
             "$type": "kOS.Safe.Encapsulation.Lexicon"
         },
