@@ -20,17 +20,17 @@
                 "START_MASS", 8.3,
                 "GAIN_SCHEDULE_ENABLED", true,
                 "PITCH_SPECIFIC_INERTIA", 28,
-                "MAX_ROLL", 360,
+                "MAX_ROLL", 90,
 
                 "PR_KP",0.9,
                 "PR_KI",1.8,
                 "PR_KD",0.0,
-                "YR_KP",4.0,
+                "YR_KP",2.0,
                 "YR_KI",0.0,
-                "YR_KD",0.1,
-                "RR_KP",0.1,
-                "RR_KI",0.28,
-                "RR_KD",0.0025,
+                "YR_KD",0.0,
+                "RR_KP",0.15,
+                "RR_KI",0.30,
+                "RR_KD",0.00,
 
                 "K_PITCH", 0.5,
                 "K_YAW", 0.5,
@@ -38,6 +38,31 @@
                 "USE_GCAS", true,
                 "GCAS_MARGIN", 15,
                 "GCAS_GAIN_MULTIPLIER", 2.0
+            ],
+            "$type": "kOS.Safe.Encapsulation.Lexicon"
+        },
+        "AP_ORB",
+        {
+            "entries": [
+                "USE_RCS", false,
+                "USE_RCS_STEER", false,
+                "STEER_MAX_ANGLE", 0.03,
+                "RCS_MAX_DV", 0.1,
+                "HAVE_FINS", true,
+                "CORNER_VELOCITY", 125,
+                "MAXG", 12,
+
+                "K_ORB_ENGINE_FORE", 0.3,
+
+                "R_KP", 16,
+                "R_KI", 64,
+                "R_KD", 0,
+
+
+                "K_AERO_PITCH", 5.0,
+                "K_PITCH", 2.5,
+                "K_YAW", 2.5,
+                "K_ROLL", 2.5
             ],
             "$type": "kOS.Safe.Encapsulation.Lexicon"
         },
@@ -61,9 +86,6 @@
 
                 "K_Q", 0.1,
                 "K_E", 0.1,
-                "GEAR_BANK_MAX", 5,
-                "BANK_MAX", 180,
-                "TAIL_STRIKE", 7.5,
                 "VSET_MAX", 850,
                 "GEAR_HEIGHT", 1.1
             ],
@@ -124,6 +146,15 @@
                 "MAX_ENERGY", 50000000,
                 "DISPLAY_UPDATE_PERIOD", 0.25,
                 "TARGET_SCAN_TIMEOUT", 10
+            ],
+            "$type": "kOS.Safe.Encapsulation.Lexicon"
+        },
+        "UTIL_PHYS",
+        {
+            "entries": [
+                "MOI_ADAPT", false,
+                "AERO_ADAPT", true,
+                "DISPLAY_ON", false
             ],
             "$type": "kOS.Safe.Encapsulation.Lexicon"
         }

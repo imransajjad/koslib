@@ -28,7 +28,7 @@
                 "YR_KI",0.0,
                 "YR_KD",0.0,
                 "RR_KP",0.075,
-                "RR_KI",0.09,
+                "RR_KI",0.0,
                 "RR_KD",0.0,
 
                 "K_PITCH", 0.95,
@@ -90,7 +90,7 @@
         {
             "entries": [
                 "ON_START", true,
-                "LADDER_START", true,
+                "LADDER_START", false,
                 "NAV_START", true,
                 "CAMERA_HEIGHT", 1.111,
                 "CAMERA_RIGHT", -0.43,
@@ -98,6 +98,17 @@
                 "GSLOPE", 3.0,
                 "GHEAD", 90.4,
                 "PITCH_DIV", 5.0
+            ],
+            "$type": "kOS.Safe.Encapsulation.Lexicon"
+        },
+        "UTIL_PHYS",
+        {
+            "entries": [
+                "MOI_ADAPT", false,
+                "WING_AREA", 91950,
+                "FUES_AREA", 4159,
+                "AERO_ADAPT", true,
+                "DISPLAY_ON", false
             ],
             "$type": "kOS.Safe.Encapsulation.Lexicon"
         }

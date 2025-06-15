@@ -66,11 +66,13 @@ local WING_AREA_Y is (GLIM_LAT*g0/CORNER_VELOCITY).
 local WING_AREA_R is MAX_ROLL. //(GLIM_ROLL*g0/CORNER_VELOCITY).
 
 if RATE_SCHEDULE_ENABLED {
-    // if rate schedule not is enabled, these values represent max rates, not wing area
-    // and LF also then represents something different
+    // if enabled, prate_max = (g_lim0/v0)*(LF/LF0), g_lim0, v0, LF0 are constants, LF changes
     set WING_AREA_P to WING_AREA_P/(CORNER_SEA_Q*cl_sched(CORNER_VELOCITY))*(START_MASS*CORNER_VELOCITY).
     set WING_AREA_Y to WING_AREA_Y/(CORNER_SEA_Q*cl_sched(CORNER_VELOCITY))*(START_MASS*CORNER_VELOCITY).
     set WING_AREA_R to WING_AREA_R/(CORNER_SEA_Q*cl_sched(CORNER_VELOCITY))*(START_MASS*CORNER_VELOCITY).
+
+    // if rate schedule not is enabled, these values represent max rates, not wing area
+    // and LF also then represents something different
 }.
 
 local lock GLimiter to ( prate_max+0.0001 + g0/vel*cos(vel_pitch)*cos(roll) >
@@ -364,16 +366,16 @@ function ap_aero_w_nav_do {
 
     unlock steering. // steering manager needs to be disabled.
     
-    local target_R is (-ship_vel_dir)*AP_NAV_ATT.
-    local current_R is (-ship_vel_dir)*ship:facing.
+    local target_R is (-ship:facing)*AP_NAV_ATT.
+    local current_R is (-ship:facing)*ship:facing.
     
     // set acc_vec to vectorexclude(vel_vec, acc_vec).
-    // local wff is (-ship_vel_dir)*vcrs(vel_vec,acc_vec):normalized*(acc_vec:mag/max(0.0001,vel_vec:mag))*RAD2DEG.
-    local wg is (-ship_vel_dir)*(-vcrs(ship:velocity:surface:normalized, ship:up:vector)*
+    // local wff is (-ship:facing)*vcrs(vel_vec,acc_vec):normalized*(acc_vec:mag/max(0.0001,vel_vec:mag))*RAD2DEG.
+    local wg is (-ship:facing)*(-vcrs(ship:velocity:surface:normalized, ship:up:vector)*
                 (get_frame_accel_orbit()/max(1,vel)):mag*RAD2DEG).
 
     local a_applied is K_PITCH*(vel_vec-ship:velocity:surface) + acc_vec.
-    local w_v is (-ship_vel_dir)*vcrs(ship:velocity:surface:normalized, a_applied)/max(0.0001,ship:velocity:surface:mag)*RAD2DEG.
+    local w_v is (-ship:facing)*vcrs(ship:velocity:surface:normalized, a_applied)/max(0.0001,ship:velocity:surface:mag)*RAD2DEG.
 
     local w_R is
         V(K_PITCH*wrap_angle((target_R:pitch - current_R:pitch)),
