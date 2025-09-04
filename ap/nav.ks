@@ -94,11 +94,11 @@ function ap_nav_display {
     } else if AP_NAV_IN_ORBIT and defined AP_NAV_ORB_ENABLED and ap_nav_orb_mannode() {
         set DISPLAY_ORB to true.
 
-    } else if AP_NAV_IN_SURFACE and defined AP_NAV_SRF_ENABLED and ap_nav_srf_stick() {
-        set DISPLAY_SRF to true.
-
     } else if defined AP_NAV_MISSILE_ENABLED and ap_nav_missile_guide() {
         set DISPLAY_MIS to true.
+
+    } else if AP_NAV_IN_SURFACE and defined AP_NAV_SRF_ENABLED and ap_nav_srf_stick() {
+        set DISPLAY_SRF to true.
 
     } else {
         set AP_NAV_VEL to ap_nav_get_vessel_vel().

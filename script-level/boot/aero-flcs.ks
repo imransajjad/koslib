@@ -32,8 +32,6 @@ fetch_and_run("0:/koslib/ap/mode.ks").
 
 GLOBAL BOOT_AERO_FLCS_ENABLED IS true.
 
-// add_plane_globals().
-
 // main loop
 until false {
     get_plane_globals().

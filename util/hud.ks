@@ -392,7 +392,7 @@ local function lr_text_info {
             }
             set alt_head_str to alt_head_str + char(10) + "e " +  + round_fig(ship:orbit:eccentricity,2).
         } else if (NAVMODE = "SURFACE") {
-            set vel_displayed to ">> " + round_dec(round_fig(ship:velocity:surface:mag,2),2).
+            set vel_displayed to ">> " + round_dec(round_fig(ship:velocity:surface:mag, choose 5 if GEAR else 2),2).
             
             set alt_head_str to
                     (choose round_fig(ship:altitude-max(ship:geoposition:terrainheight,0) - get_gear_vec(SHIP_HEIGHT)*ship:body:position:normalized,1) +" ^_"
@@ -558,6 +558,7 @@ function util_hud_get_help_str {
         "UTIL_HUD running on "+core:tag,
         "hud align(elev,bear,roll)  set align",
         "hud color(r,g,b)   set HUD_COLOR",
+        "hud cam            get hud position",
         "hud cam(top,star)  move hud position",
         "hud alpha(deg)     alpha marker",
         "hud reset          remove stored changes",
@@ -606,10 +607,10 @@ function util_hud_parse_command {
             print "use args (r,g,b) <- [0,1]".
         }
     } else if commtext = "cam" and all_scalar(args) {
-        if (args:length = 2) {
+        if args:length = 2 or args:length = 0 {
             util_shbus_tx_msg("HUD_CAM_MOVE", args).
         } else {
-            print "use args (top,star)".
+            print "use no args or args (top,star)".
         }
     } else if commtext = "alpha" and all_scalar(args) {
         if (args:length = 0) or (args:length = 1) {
@@ -679,9 +680,14 @@ function util_hud_decode_rx_msg {
         }
         hud_settings_save().
     } else if opcode = "HUD_CAM_MOVE" {
-        set SETTINGS["CAMERA_HEIGHT"] to SETTINGS["CAMERA_HEIGHT"] + data[0].
-        set SETTINGS["CAMERA_RIGHT"] to SETTINGS["CAMERA_RIGHT"] + data[1].
-        hud_settings_save().
+        if data:length = 0 {
+            util_shbus_ack("current (top,star): (" + round_fig(SETTINGS["CAMERA_HEIGHT"],3)
+                + "," + round_fig(SETTINGS["CAMERA_RIGHT"],3) + ")", sender).
+        } else {
+            set SETTINGS["CAMERA_HEIGHT"] to SETTINGS["CAMERA_HEIGHT"] + data[0].
+            set SETTINGS["CAMERA_RIGHT"] to SETTINGS["CAMERA_RIGHT"] + data[1].
+            hud_settings_save().
+        }
     } else if opcode = "HUD_RESET" {
         if exists("hud-settings.json") {
             deletepath("hud-settings.json").

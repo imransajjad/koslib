@@ -85,7 +85,7 @@ local function missile_intercept {
         // may want to figure out how to do this with gains
         set dv_r to convex(20.0,1.0,INTERCEPT_TIME/12.5)*dv_r.
     }
-    if time:seconds - t_print > 0.25 {
+    if time:seconds - t_print > 0.20 {
         set t_print to time:seconds.
         local lateral_vec is vectorexclude(V(0,0,1), (-ship:facing)*INTERCEPT_POS):mag.
         if (false) {
@@ -135,7 +135,7 @@ function ap_nav_missile_guide {
         set AP_NAV_ACC to GRAV_ACC.
         set AP_NAV_ATT to ship:facing.
         ap_nav_missile_guide_cleanup().
-        if mother_ship:position:mag < 4.0 {
+        if mother_ship:position:mag < 3.5 {
             ap_me_limit_set(20).
         } else {
             ap_me_limit_set(100).
@@ -153,9 +153,6 @@ function ap_nav_missile_guide {
         set AP_NAV_ATT to ship:facing.
         return true.
     } else  {
-        set AP_NAV_VEL to ap_nav_get_vessel_vel().
-        set AP_NAV_ACC to V(0,0,0).
-        set AP_NAV_ATT to ship:facing.
         ap_nav_missile_guide_cleanup().
         set INTERCEPT_TIME to 10.
         return false.

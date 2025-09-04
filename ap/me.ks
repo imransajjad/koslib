@@ -81,7 +81,7 @@ function ap_me_throttle {
     if SAS {
         return.
     }
-    set SHIP:CONTROL:MAINTHROTTLE to input_throttle.
+    set SHIP:CONTROL:MAINTHROTTLE to max(0.001,input_throttle).
 }
 
 function ap_me_limit_set {

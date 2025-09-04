@@ -2,8 +2,8 @@
 GLOBAL AP_NAV_SRF_ENABLED IS TRUE.
 local PARAM is get_param(readJson("param.json"), "AP_NAV_SRF", lexicon()).
 
-local K_Q is get_param(PARAM,"K_Q").
-local K_E is get_param(PARAM,"K_E").
+local K_Q is get_param(PARAM,"K_Q", 0.1).
+local K_E is get_param(PARAM,"K_E", 0.1).
 
 local FOLLOW_MODE_F is false.
 local FOLLOW_MODE_A is false.
@@ -302,7 +302,7 @@ function ap_nav_srf_status_string {
     set mode_str to mode_str + 
     (choose "F" if FOLLOW_MODE_F else "") +
     (choose "A" if FOLLOW_MODE_A else "") +
-    (choose "Q" if FOLLOW_MODE_Q else "").
+    (choose "Q:" + round_dec(ship:q,2) if FOLLOW_MODE_Q else "").
     set FOLLOW_MODE_F to false.
     set FOLLOW_MODE_A to false.
     set FOLLOW_MODE_Q to false.

@@ -186,7 +186,7 @@ local function turbojet_throttle_auto {
 local forward_thrust is true.
 
 local function turbofan_common {
-    if my_throttle <= 0.001 and brakes and ship:airspeed > 10 and abs(vel_pitch) < 2.5 {
+    if my_throttle <= 0.001 and brakes and ship:airspeed > 10 and abs(pitch) < 2.5 {
         if forward_thrust {
             set forward_thrust to false.
             for e in MAIN_ENGINES {

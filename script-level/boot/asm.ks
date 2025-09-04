@@ -6,20 +6,9 @@ global DEV_FLAG is true.
 global FETCH_SOURCE is (DEV_FLAG or not exists("param.json")) and HOMECONNECTION:ISCONNECTED.
 if FETCH_SOURCE { print "fetching resources from base".}
 
-function fetch_and_run {
-    parameter filehomepath.
-
-    local filepath is filehomepath:replace("0:/", "").
-    if FETCH_SOURCE {
-        copypath(filehomepath, filepath).
-    }
-    if filepath:contains(".ks") {
-        runoncepath(filepath).
-    }
-}
-
-fetch_and_run("0:/koslib/util/common.ks").
 if FETCH_SOURCE {
+    copypath("0:/koslib/util/common.ks","koslib/util/common.ks").
+    runoncepath("koslib/util/common.ks").
     get_boot_param_file("0:/param").
 }
 
@@ -41,8 +30,8 @@ add_plane_globals().
 
 util_shsys_set_spin("engine", true).
 
-
 until util_shsys_check() {
+    util_shbus_rx_msg().
     ap_nav_missile_guide().
     wait 0.02.
 }

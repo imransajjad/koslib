@@ -338,6 +338,17 @@ local function display_resource_state {
     set warn_string to new_warn_string.
 }
 
+function util_shsys_fix_control_part {
+    if (not ship:controlpart:hasmodule("ModuleCommand")) {
+        local c is get_ancestor_with_module("ModuleCommand").
+        if (c = -1) { get_child_with_module("ModuleCommand"). }
+        if not (c = -1) {
+            print c.
+            c:controlfrom().
+        }
+    }
+}
+
 // main function for ship systems
 // returns true if sys is not blocked.
 function util_shsys_check {
