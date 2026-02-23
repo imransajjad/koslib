@@ -28,6 +28,7 @@ local GCAS_ALTITUDE is 0.0.
 if PARAM:haskey("AP_NAV_SRF") {
     set NOM_NAV_G to get_param(PARAM["AP_NAV_SRF"], "ROT_GNOM_VERT", NOM_NAV_G).
 }
+print "wp got NOM_NAV_G: " + round_dec(NOM_NAV_G,2).
 if PARAM:haskey("AP_AERO_W") and get_param(PARAM["AP_AERO_W"], "USE_GCAS", false) {
     set GCAS_ALTITUDE to get_param(PARAM["AP_AERO_W"], "GCAS_MARGIN", GCAS_ALTITUDE).
 }
@@ -241,7 +242,7 @@ local function generate_landing_seq {
 
     local lat_stp is -0.0493672258730508.
     local lng_stp is -74.6115615766677.
-    local alt_stp is latlng(lat_stp,lng_stp):terrainheight+0.0.
+    local alt_stp is latlng(lat_stp,lng_stp):terrainheight-1.0.
 
     local stop_dist is 1000.
     set GSlope to abs(GSlope).
@@ -250,7 +251,7 @@ local function generate_landing_seq {
     local flare_sd is 1.0. // flare slowdown
 
     local flare_radius is max(10*(flare_sd*speed)/((GSlope-LSlope)*DEG2RAD),
-                (flare_sd*speed)^2/((NOM_NAV_G/4)*g0) ).
+                (flare_sd*speed)^2/((NOM_NAV_G*g0)) ).
                     // at least 10 second flare or what navg allows
     local flare_g is (flare_sd*speed)^2/flare_radius/g0.
 

@@ -21,6 +21,7 @@ fetch_and_run("0:/koslib/resource/blank.png").
 fetch_and_run("0:/koslib/util/hud.ks").
 
 fetch_and_run("0:/koslib/ap/stick.ks").
+fetch_and_run("0:/koslib/ap/me.ks").
 fetch_and_run("0:/koslib/ap/orb.ks").
 fetch_and_run("0:/koslib/ap/nav.ks").
 fetch_and_run("0:/koslib/ap/nav/orb.ks").

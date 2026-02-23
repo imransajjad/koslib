@@ -23,8 +23,8 @@
 
                 "K_ORB_ENGINE_FORE", 0.5,
                 
-                "R_KP", 16,
-                "R_KI", 64,
+                "R_KP", 3,
+                "R_KI", 5,
                 "R_KD", 0,
 
 

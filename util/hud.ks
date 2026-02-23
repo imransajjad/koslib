@@ -23,6 +23,7 @@ set SETTINGS["ALIGN_ROLL"] to 0.
 set SETTINGS["ground_alt"] to false.
 set SETTINGS["movable"] to false.
 set SETTINGS["frame_time"] to false.
+set SETTINGS["mileage"] to false.
 
 set SETTINGS["CAMERA_HEIGHT"] to get_param(PARAMS, "CAMERA_HEIGHT", 0).
 set SETTINGS["CAMERA_RIGHT"] to get_param(PARAMS, "CAMERA_RIGHT", 0).
@@ -60,6 +61,7 @@ local HUD_ALIGN_ROLL is SETTINGS["ALIGN_ROLL"].
 local HUD_AGL is SETTINGS["ground_alt"].
 local HUD_MOVABLE is SETTINGS["movable"].
 local HUD_FRAME_TIME is SETTINGS["frame_time"].
+local HUD_KPT is SETTINGS["mileage"].
 
 local CAMERA_HEIGHT is SETTINGS["CAMERA_HEIGHT"].
 local CAMERA_RIGHT is SETTINGS["CAMERA_RIGHT"].
@@ -83,6 +85,7 @@ local function hud_settings_save {
     set HUD_AGL to SETTINGS["ground_alt"].
     set HUD_MOVABLE to SETTINGS["movable"].
     set HUD_FRAME_TIME to SETTINGS["frame_time"].
+    set HUD_KPT to SETTINGS["mileage"].
 
     set CAMERA_HEIGHT to SETTINGS["CAMERA_HEIGHT"].
     set CAMERA_RIGHT to SETTINGS["CAMERA_RIGHT"].
@@ -333,6 +336,45 @@ local function alpha_bracket_draw {
 }
 
 
+local m_prev_engine_prop is -1.
+local m_prev_engine_prop_t is 0.0.
+local m_fuel_flow is 0.0.
+
+local function get_meters_per_fuel {
+    parameter speed.
+
+    if kuniverse:timewarp:rate = 1.0 {
+        local new_engine_prop is 0.0.
+        for r in ship:resources {
+            if r:name = "LiquidFuel" or r:name = "Oxidizer" {
+                set new_engine_prop to new_engine_prop + r:amount*r:density.
+            }
+        }
+
+        local m_engine_prop is new_engine_prop.
+        if (m_prev_engine_prop >= 0) {
+            set m_engine_prop to (0.9)*m_prev_engine_prop + (0.1)*new_engine_prop.
+        }
+        local m_engine_prop_t is time:seconds.
+
+        // print round_fig(m_engine_prop,4) + " " + round_fig(m_engine_prop_t,4).
+
+        set m_fuel_flow to (m_engine_prop - m_prev_engine_prop)/(m_engine_prop_t - m_prev_engine_prop_t).
+
+        set m_prev_engine_prop to m_engine_prop.
+        set m_prev_engine_prop_t to m_engine_prop_t.
+    }
+
+    if abs(m_fuel_flow) > 0.0001 {
+        return -speed/m_fuel_flow/1000. // km per ton
+    } else {
+        return 0.
+    }
+    
+}
+
+
+
 local hud_info_init_draw is false.
 
 local function lr_text_info {
@@ -392,11 +434,22 @@ local function lr_text_info {
             }
             set alt_head_str to alt_head_str + char(10) + "e " +  + round_fig(ship:orbit:eccentricity,2).
         } else if (NAVMODE = "SURFACE") {
-            set vel_displayed to ">> " + round_dec(round_fig(ship:velocity:surface:mag, choose 5 if GEAR else 2),2).
+            set vel_displayed to ">> " + round_dec(round_fig(ship:velocity:surface:mag, choose 3 if GEAR else 2),2).
+
+            local ground_alt_str is round_dec(ship:altitude,0)+" <|".
+            if (GEAR or HUD_AGL) {
+                local ground_alt is ship:altitude-max(ship:geoposition:terrainheight,0) - get_gear_vec(SHIP_HEIGHT)*ship:body:position:normalized.
+                if  ground_alt < 5.0*abs(ship:verticalspeed) {
+                    // if the ground is 5 seconds away in either direction
+                    set ground_alt_str to "\_ " + round_fig(ship:verticalspeed,2).
+                } else {
+                    set ground_alt_str to round_fig(ground_alt,1) +" ^_".
+                }
+            }
             
             set alt_head_str to
-                    (choose round_fig(ship:altitude-max(ship:geoposition:terrainheight,0) - get_gear_vec(SHIP_HEIGHT)*ship:body:position:normalized,1) +" ^_"
-                    if (GEAR or HUD_AGL) else round_dec(ship:altitude,0)+" <|" ) +
+                    ground_alt_str +
+                    (choose char(10) + round_fig( get_meters_per_fuel(ship:velocity:surface:mag), 2 ) + " kpt"  if HUD_KPT else "") +
                     char(10) + round_dec(vel_bear,0) +" -O ".
         } else if (NAVMODE = "TARGET") and HASTARGET {
             local target_ship is TARGET.
@@ -571,6 +624,7 @@ function util_hud_get_help_str {
         "     movable",
         "     ground_alt",
         "     frame_time",
+        "     mileage",
         "hud help           print help"
         ).
 }

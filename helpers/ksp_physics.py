@@ -181,9 +181,10 @@ def do_ship_math(A):
 
     # gravity acceleration
     r = np.sqrt(A["opx"]**2 + A["opy"]**2 + A["opz"]**2)
-    A["gx"] = A["mu"]/(r**2)*(A["opx"]/r)
-    A["gy"] = A["mu"]/(r**2)*(A["opy"]/r)
-    A["gz"] = A["mu"]/(r**2)*(A["opz"]/r)
+    modifier = 1.0*np.array(A["h"] > 100000) + (6.726/7.387)*np.array(A["h"] <= 100000)
+    A["gx"] = modifier*A["mu"]/(r**2)*(A["opx"]/r)
+    A["gy"] = modifier*A["mu"]/(r**2)*(A["opy"]/r)
+    A["gz"] = modifier*A["mu"]/(r**2)*(A["opz"]/r)
 
     # y0 is surface speed
     A["sv"] = np.sqrt(A["svx"]**2 + A["svy"]**2 + A["svz"]**2)
@@ -258,9 +259,9 @@ def do_vel_math(A):
     A["fy_vel"] = f_vel[:,1]
     A["fz_vel"] = f_vel[:,2]
 
-    A["p_faerox_vel"] = A["q"]*cl(A["y0"])*sin(A["beta"])*cos(A["beta"])
-    A["p_faeroy_vel"] = A["q"]*cl(A["y0"])*sin(A["alpha"])*cos(A["alpha"])
-    A["p_faeroz_vel"] = -A["q"]*cd(A["y0"])*sin(A["alpha"])*sin(A["alpha"])
+    A["p_faerox_vel"] = A["q"]*sin(A["beta"])*cos(A["beta"])
+    A["p_faeroy_vel"] = A["q"]*sin(A["alpha"])*cos(A["alpha"])
+    A["p_faeroz_vel"] = -A["q"]*sin(A["alpha"])*sin(A["alpha"])
 
 
     A["p_faerox_area"] = np.dot(A["p_faerox_vel"],A["faerox_vel"])/np.dot(A["p_faerox_vel"],A["p_faerox_vel"]) 
@@ -306,14 +307,15 @@ def do_area_estimate(A):
             A["p_area_faeroz_vel"][i] = f_predicted[2]
 
 
-def do_glide_prediction(A, N=10, tstart=500):
+def do_glide_prediction(A, N=10, tstart=0, tend=99999999999):
     g0 = 9.81
     k = 5000
     A["glide_paths"] = []
     t_start_i = [ i for i,t in enumerate(A["t"]) if t > tstart][0]
-    print(t_start_i)
-    t_stride_i = int((len(A["t"]) - t_start_i)/N)
-    for i,_ in itertools.islice(enumerate(A["t"]), t_start_i, None, t_stride_i):
+    t_end_i = [ i for i,t in enumerate(A["t"]) if t < tend][-1]
+    print(t_start_i,t_end_i)
+    t_stride_i = int((t_end_i - t_start_i)/N)
+    for i,_ in itertools.islice(enumerate(A["t"]), t_start_i, t_end_i, t_stride_i):
         t0 = float(A["t"][i])
         v0 = float(A["y0"][i])
         Fv = A["faeroz_vel"][i]/A["m"][i]
@@ -332,6 +334,7 @@ def do_glide_prediction(A, N=10, tstart=500):
         G["h"] = 2*k*np.log( G["y0"]/v0 )
         G["h"] += (h0-G["h"][i])
         G["lng"] = integrate.cumulative_trapezoid(G["y0"]*cos(G["gamma"]), A["t"], initial=0)/(600000)*180/np.pi
+        # G["lng"] = (G["y0"] + 0.5*Fv*G["t"]**2)*cos(G["gamma"])/(600000)*180/np.pi
         G["lng"] += (lng0-G["lng"][i])
 
         A["glide_paths"].append(G)
@@ -361,6 +364,7 @@ def parse_log_to_dict(fname):
         if x[0] == "t":
             data_keys = x
             for xi in x:
+                # check for duplicates
                 D[xi] = list()
         elif "log-" in x[0]:
             D["logname"] = line
@@ -370,6 +374,7 @@ def parse_log_to_dict(fname):
         elif len(x) == len(data_keys):
             for key, dpoint in zip(data_keys,x):
                 D[key].append(float(dpoint))
+                
     
     # convert all data_keys dicts to np arrays
     # make sure order is correct in case of combined files.

@@ -31,18 +31,18 @@ local GCAS_GAIN_MULTIPLIER is get_param(PARAM, "GCAS_GAIN_MULTIPLIER").
 local MAX_ROLL is DEG2RAD*get_param(PARAM,"MAX_ROLL", 180).
 
 // pitch rate PID gains
-local PR_KP is get_param(PARAM,"PR_KP", 0).
-local PR_KI is get_param(PARAM,"PR_KI", 0).
+local PR_KP is get_param(PARAM,"PR_KP", 1.0).
+local PR_KI is get_param(PARAM,"PR_KI", 1.5).
 local PR_KD is get_param(PARAM,"PR_KD", 0).
 
 // yaw rate PID gains
-local YR_KP is get_param(PARAM,"YR_KP", 0).
-local YR_KI is get_param(PARAM,"YR_KI", 0).
+local YR_KP is get_param(PARAM,"YR_KP", 1.0).
+local YR_KI is get_param(PARAM,"YR_KI", 1.5).
 local YR_KD is get_param(PARAM,"YR_KD", 0).
 
 // roll rate PID gains
-local RR_KP is get_param(PARAM,"RR_KP", 0).
-local RR_KI is get_param(PARAM,"RR_KI", 0).
+local RR_KP is get_param(PARAM,"RR_KP", 1.0).
+local RR_KI is get_param(PARAM,"RR_KI", 1.5).
 local RR_KD is get_param(PARAM,"RR_KD", 0).
 
 // nav angle difference gains
@@ -78,10 +78,10 @@ if RATE_SCHEDULE_ENABLED {
 local lock GLimiter to ( prate_max+0.0001 + g0/vel*cos(vel_pitch)*cos(roll) >
     GLIM_VERT*g0/vel ).
 
-local lock prate_max to max(MIN_ANY_RATE, min(WING_AREA_P*LF, GLIM_VERT*g0/vel)
-                     - g0/vel*cos(vel_pitch)*cos(roll) ).
+local lock prate_max to max(MIN_ANY_RATE, min(WING_AREA_P*LF, GLIM_VERT*g0/vel)- g0/vel*cos(vel_pitch)*cos(roll) ).
 local lock yrate_max to max(0.33*MIN_ANY_RATE, min(WING_AREA_Y*LF, GLIM_LAT*g0/vel) ).
-local lock rrate_max to max(3*MIN_ANY_RATE, min(WING_AREA_R*LF, MAX_ROLL*CORNER_VELOCITY/vel) ).
+// local lock rrate_max to max(3*MIN_ANY_RATE, min(WING_AREA_R*LF, MAX_ROLL*CORNER_VELOCITY/vel) ).
+local lock rrate_max to max(3*MIN_ANY_RATE, min(WING_AREA_R*LF, MAX_ROLL*CORNER_VELOCITY/vel)*max(0.1,(cos(2.5*alpha)^4)) ).
 
 local pratePID is PIDLOOP(
     PR_KP,

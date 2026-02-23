@@ -64,14 +64,14 @@ function abs_max {
 
 function round_dec {
     parameter NUM.
-    parameter FRAD_DIG.
+    parameter FRAD_DIG is 2.
     return ROUND(NUM*(10^FRAD_DIG))/(10^FRAD_DIG).
 }
 set rdc to round_dec@.
 
 function round_fig {
     parameter NUM.
-    parameter FIG.
+    parameter FIG is 2.
     local FRAD_DIG is max(0,FIG-floor(log10(max(0.00001,abs(num))))-1).
     return ROUND(NUM*(10^FRAD_DIG))/(10^FRAD_DIG).
 }
