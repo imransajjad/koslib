@@ -28,6 +28,9 @@ fetch_and_run("0:/koslib/ap/nav/missile.ks").
 
 add_plane_globals().
 
+set stowed to get_ancestor_named("smallHardPoint") = -1 and get_ancestor_named("HardPoint") = -1.
+print "stowed: " + stowed.
+
 util_shsys_set_spin("engine", true).
 
 until util_shsys_check() {
@@ -35,17 +38,18 @@ until util_shsys_check() {
     ap_nav_missile_guide().
     wait 0.02.
 }
-ap_nav_missile_guide_cleanup().
 
 util_shsys_do_action("lock_target").
 
-util_shbus_tx_msg("SYS_CB_OPEN",list(),list("flcs")).
-util_shsys_set_spin("bays", true).
-util_shsys_spin_check().
 
-util_shbus_tx_msg("SYS_PL_AWAY",list(ship:name+" Probe"),list("flcs")).
-util_shbus_tx_msg("SYS_CB_CLOSE",list(ship:name+" Probe"),list("flcs")).
+if stowed {
+    util_shbus_tx_msg("SYS_CB_OPEN",list(),list("flcs")).
+    util_shsys_set_spin("bays", true).
+    util_shsys_spin_check().
 
+    util_shbus_tx_msg("SYS_PL_AWAY",list(ship:name+" Probe"),list("flcs")).
+    util_shbus_tx_msg("SYS_CB_CLOSE",list(ship:name+" Probe"),list("flcs")).
+}
 
 util_shsys_cleanup().
 util_shbus_disconnect().

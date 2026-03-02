@@ -443,6 +443,30 @@ function get_ancestor_with_module {
     return -1. // not found error condition
 }
 
+function get_ancestor_named {
+    parameter name_str.
+    parameter return_one_less is false.
+    parameter walk_max is 10.
+
+    local current_part is core:part.
+    for i in range(0,walk_max) {
+
+        if current_part:hasparent and 
+            current_part:parent:name = name_str {
+            if return_one_less {
+                return current_part.
+            } else {
+                return current_part:parent.
+            }
+        } else if current_part:hasparent {
+            set current_part to current_part:parent.
+        } else {
+            return -1.
+        }
+    }
+    return -1. // not found error condition
+}
+
 function get_child_with_module {
     parameter module_str.
     parameter return_one_less is false.

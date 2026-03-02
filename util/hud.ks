@@ -24,6 +24,7 @@ set SETTINGS["ground_alt"] to false.
 set SETTINGS["movable"] to false.
 set SETTINGS["frame_time"] to false.
 set SETTINGS["mileage"] to false.
+set SETTINGS["latlng"] to false.
 
 set SETTINGS["CAMERA_HEIGHT"] to get_param(PARAMS, "CAMERA_HEIGHT", 0).
 set SETTINGS["CAMERA_RIGHT"] to get_param(PARAMS, "CAMERA_RIGHT", 0).
@@ -62,6 +63,7 @@ local HUD_AGL is SETTINGS["ground_alt"].
 local HUD_MOVABLE is SETTINGS["movable"].
 local HUD_FRAME_TIME is SETTINGS["frame_time"].
 local HUD_KPT is SETTINGS["mileage"].
+local HUD_LATLNG is SETTINGS["latlng"].
 
 local CAMERA_HEIGHT is SETTINGS["CAMERA_HEIGHT"].
 local CAMERA_RIGHT is SETTINGS["CAMERA_RIGHT"].
@@ -86,6 +88,7 @@ local function hud_settings_save {
     set HUD_MOVABLE to SETTINGS["movable"].
     set HUD_FRAME_TIME to SETTINGS["frame_time"].
     set HUD_KPT to SETTINGS["mileage"].
+    set HUD_LATLNG to SETTINGS["latlng"].
 
     set CAMERA_HEIGHT to SETTINGS["CAMERA_HEIGHT"].
     set CAMERA_RIGHT to SETTINGS["CAMERA_RIGHT"].
@@ -446,9 +449,17 @@ local function lr_text_info {
                     set ground_alt_str to round_fig(ground_alt,1) +" ^_".
                 }
             }
+            local latlng_str is "".
+            if (HUD_LATLNG) {
+                local lat is ship:geoposition:lat.
+                local lng is ship:geoposition:lng.
+                set latlng_str to char(10) + round_dec(abs(lat),3) + char(176) + (choose "N" if lat >= 0 else "S") +
+                                char(10) + round_dec(abs(lng),3) + char(176) + (choose "E" if lng >= 0 else "W").
+            }
             
             set alt_head_str to
                     ground_alt_str +
+                    latlng_str +
                     (choose char(10) + round_fig( get_meters_per_fuel(ship:velocity:surface:mag), 2 ) + " kpt"  if HUD_KPT else "") +
                     char(10) + round_dec(vel_bear,0) +" -O ".
         } else if (NAVMODE = "TARGET") and HASTARGET {
@@ -625,6 +636,7 @@ function util_hud_get_help_str {
         "     ground_alt",
         "     frame_time",
         "     mileage",
+        "     latlng",
         "hud help           print help"
         ).
 }
