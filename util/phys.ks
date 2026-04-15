@@ -15,7 +15,7 @@ if exists("phys-settings.json") {
 local C_SCHED_TYPE is get_param(PARAM, "C_SCHED_TYPE", "FS3T").
 
 local A_ffactor is get_param(PARAM, "FORGET_FACTOR_AREA", 0.9).
-local MOI_ffactor is get_param(PARAM, "FORGET_FACTOR_MOI", 0.9999).
+local MOI_ffactor is get_param(PARAM, "FORGET_FACTOR_MOI", 0.999).
 
 local A_wing is get_param(PARAM, "WING_AREA", 20).
 local A_fues is get_param(PARAM, "FUES_AREA", 2).
@@ -254,7 +254,7 @@ function get_sus_turn_rate {
 local moi_stage is stage:number.
 local moi_cross is V(0,0,0). // V(xy, yz, xz)
 local moi_mass is ship:mass.
-local moi_update_acc_2 is V(0,0,0).
+local MOI_Q is V(1,1,1). // this is effectively inverse covariance matrix (power in measurement)
 local function init_moi {
     // some MOI_spec calculations from scratch
     
@@ -284,36 +284,49 @@ local function moi_update {
     local ang_acc is (-ship:facing)*get_angular_acc(). // angular acc in ship frame
     local B is ap_get_control_bu().
 
-    if MOI:x <= 0 or MOI:y <= 0 or MOI:z <= 0 {
-        init_moi().
-    }
+    // if MOI:x <= 0 or MOI:y <= 0 or MOI:z <= 0 {
+    //     init_moi().
+    // }
 
-    if moi_stage <> stage:number {
-        set moi_stage to stage:number.
-        set MOI to MOI*ship:mass/moi_mass.
-    }
+    // if mass is changing, increase uncertainty
+    set MOI_Q to 1/(1 + (moi_mass - ship:mass)^2)*MOI_Q.
+    set MOI to (ship:mass/moi_mass)*MOI.
     set moi_mass to ship:mass.
 
-    local dI is V(0,0,0).
-    if abs(1.03*ang_acc:x) > ang_acc:mag and ang_acc:mag > 0.05*B:x/MOI:x {
-        set moi_update_acc_2:x to MOI_ffactor*moi_update_acc_2:x + ang_acc:x^2.
-        set dI:x to (-ang_acc:x*B:x*ship:control:pitch - MOI:x*ang_acc:x^2)/moi_update_acc_2:x.
-    }
-    if abs(1.03*ang_acc:y) > ang_acc:mag and ang_acc:mag > 0.05*B:y/MOI:y {
-        set moi_update_acc_2:y to MOI_ffactor*moi_update_acc_2:y + ang_acc:y^2.
-        set dI:y to (ang_acc:y*B:y*ship:control:yaw - MOI:y*ang_acc:y^2)/moi_update_acc_2:y.
-    }
-    if abs(1.03*ang_acc:z) > ang_acc:mag and ang_acc:mag > 0.05*B:z/MOI:z {
-        set moi_update_acc_2:z to MOI_ffactor*moi_update_acc_2:z + ang_acc:z^2.
-        set dI:z to (-ang_acc:z*B:z*ship:control:roll - MOI:z*ang_acc:z^2)/moi_update_acc_2:z.
-    }
-    set MOI to MOI + dI.
 
+    // consider changing 0.05 to 0.95, i.e. only adapt in saturation.
+    // Then choose auto gains to be damped but aggressive
+    local new_moi_update_tau_x is MOI_ffactor*MOI_Q:x.
+    if abs(1.03*ang_acc:x) > ang_acc:mag and abs(ship:control:pitch) > 0.05 {
+        local tau_x is -B:x*ship:control:pitch.
+        set new_moi_update_tau_x to new_moi_update_tau_x + tau_x^2.
+        set MOI:x to new_moi_update_tau_x/(MOI_ffactor*MOI_Q:x/MOI:x + ang_acc:x*tau_x ).
+    }
+    set MOI_Q:x to max(0.01,new_moi_update_tau_x).
+
+    local new_moi_update_tau_y is MOI_ffactor*MOI_Q:y.
+    if abs(1.03*ang_acc:y) > ang_acc:mag and abs(ship:control:yaw) > 0.05 {
+        local tau_y is B:y*ship:control:yaw.
+        set new_moi_update_tau_y to new_moi_update_tau_y + tau_y^2.
+        set MOI:y to new_moi_update_tau_y/(MOI_ffactor*MOI_Q:y/MOI:y + ang_acc:y*tau_y ).
+    }
+    set MOI_Q:y to max(0.01,new_moi_update_tau_y).
+
+    local new_moi_update_tau_z is MOI_ffactor*MOI_Q:z.
+    if abs(1.03*ang_acc:z) > ang_acc:mag and abs(ship:control:roll) > 0.05 {
+        local tau_z is B:z*ship:control:roll.
+        set new_moi_update_tau_z to new_moi_update_tau_z + tau_z^2.
+        set MOI:z to new_moi_update_tau_z/(MOI_ffactor*MOI_Q:z/MOI:z - ang_acc:z*tau_z ).
+    }
+    set MOI_Q:z to max(0.01,new_moi_update_tau_z).
 }
 
 function get_moment_of_inertia {
     return V(MOI:x,MOI:y,MOI:z).
-    // return V(0.412,0.412,0.291).
+}
+
+function get_moment_of_inertia_variance {
+    return V(1/MOI_Q:x,1/MOI_Q:y,1/MOI_Q:z).
 }
 
 function util_phys_update {

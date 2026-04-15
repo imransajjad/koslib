@@ -3,28 +3,26 @@ global AP_ORB_ENABLED is true.
 
 local PARAM is get_param(readJson("param.json"), "AP_ORB", lexicon()).
 
-local KP is get_param(PARAM, "R_KP", 20.0).
-local KI is get_param(PARAM, "R_KI", 100.0).
+local KP is get_param(PARAM, "R_KP", 3.0).
+local KI is get_param(PARAM, "R_KI", 5.0).
 local KD is get_param(PARAM, "R_KD", 0.0).
 
+local PR_KP is get_param(PARAM, "PR_KP", KP).
+local PR_KI is get_param(PARAM, "PR_KI", KI).
+local PR_KD is get_param(PARAM, "PR_KD", KD).
+local YR_KP is get_param(PARAM, "YR_KP", KP).
+local YR_KI is get_param(PARAM, "YR_KI", KI).
+local YR_KD is get_param(PARAM, "YR_KD", KD).
+local RR_KP is get_param(PARAM, "RR_KP", KP).
+local RR_KI is get_param(PARAM, "RR_KI", KI).
+local RR_KD is get_param(PARAM, "RR_KD", KD).
+
 // rate PID gains
-local pratePID is PIDLOOP(
-    get_param(PARAM, "PR_KP", KP),
-    get_param(PARAM, "PR_KI", KI),
-    get_param(PARAM, "PR_KD", KD),
-    -1.0,1.0).
+local pratePID is PIDLOOP(PR_KP, PR_KI, PR_KD, -1.0, 1.0).
+local yratePID is PIDLOOP(YR_KP, YR_KI, YR_KD, -1.0, 1.0).
+local rratePID is PIDLOOP(RR_KP, RR_KI, RR_KD, -1.0, 1.0).
 
-local yratePID is PIDLOOP(
-    get_param(PARAM, "YR_KP", KP),
-    get_param(PARAM, "YR_KI", KI),
-    get_param(PARAM, "YR_KD", KD),
-    -1.0,1.0).
-
-local rratePID is PIDLOOP(
-    get_param(PARAM, "RR_KP", KP),
-    get_param(PARAM, "RR_KI", KI),
-    get_param(PARAM, "RR_KD", KD),
-    -1.0,1.0).
+local ROTATION_STOP_TIME is get_param(PARAM,"ROTATION_STOP_TIME", 3.0).
 
 local MIN_SEA_Q is 1.0*(10/420)^2.
 local HAVE_FINS is get_param(PARAM,"HAVE_FINS", false).
@@ -183,27 +181,33 @@ local function control_aalpha {
 }
 
 local ship_num_parts is 0.
-local reaction_wheel_torque is V(0,0,0).
+local reaction_wheels is list().
 local function get_reaction_wheel_torque {
-    if ship_num_parts = ship:parts:length {
-        return reaction_wheel_torque.
-    }
-    set ship_num_parts to ship:parts:length.
-    set reaction_wheel_torque to V(0,0,0).
-
-    for pt in ship:parts {
-        if pt:hasmodule("ModuleReactionWheel") {
-            print "found " + pt.
-            if pt:name:startswith("mk1-3pod") {
-                print "adding mk1-3pod torque".
-                set reaction_wheel_torque to reaction_wheel_torque + V(15,15,15).
-            } else if pt:name = "sasModule" {
-                set reaction_wheel_torque to reaction_wheel_torque + V(5,5,5).
-            }  else if pt:name = "asasmodule1-2" {
-                set reaction_wheel_torque to reaction_wheel_torque + V(30,30,30).
-            }  else if pt:name = "advSasModule" {
-                set reaction_wheel_torque to reaction_wheel_torque + V(15,15,15).
+    if ship_num_parts <> ship:parts:length {
+        reaction_wheels:clear().
+        for pt in ship:parts {
+            if pt:hasmodule("ModuleReactionWheel") {
+                print "RWHLS: adding " + pt:name.
+                reaction_wheels:add(pt).
             }
+        }
+    }
+
+    set ship_num_parts to ship:parts:length.
+    local reaction_wheel_torque is V(0,0,0).
+
+    for pt in reaction_wheels {
+        local wheel_auth is pt:getmodule("ModuleReactionWheel"):getfield("wheel authority")/100.
+        if pt:name:startswith("mk1-3pod") {
+            set reaction_wheel_torque to reaction_wheel_torque + V(15,15,15)*wheel_auth.
+        } else if pt:name = "sasModule" {
+            set reaction_wheel_torque to reaction_wheel_torque + V(5,5,5)*wheel_auth.
+        }  else if pt:name = "asasmodule1-2" {
+            set reaction_wheel_torque to reaction_wheel_torque + V(30,30,30)*wheel_auth.
+        }  else if pt:name = "advSasModule" {
+            set reaction_wheel_torque to reaction_wheel_torque + V(15,15,15)*wheel_auth.
+        } else if pt:name = "probeStackLarge" {
+            set reaction_wheel_torque to reaction_wheel_torque + V(1.5,1.5,1.5)*wheel_auth.
         }
     }
     return reaction_wheel_torque.
@@ -211,7 +215,9 @@ local function get_reaction_wheel_torque {
 
 function ap_get_control_bu {
 
-    local B is V(0.0,0.0,0.0).
+    // Will need to specify that MOI is fake
+    local B is V(1.0,1.0,1.0).
+    return B.
 
     if HAVE_FINS {
         local alsat is sat(alpha,35).
@@ -474,7 +480,12 @@ function ap_orb_w {
         local B is ap_get_control_bu().
         local A is control_aalpha() + 0*vcrs( omega, V(MOI:x*omega:x,MOI:y*omega:y,MOI:z*omega:z) ).
 
-        local wmax is get_max_rrates().
+        local AG_warp is (choose 0.2 if AG else 1.0)/kuniverse:timewarp:rate.
+
+        // get maximum rates
+        local wmax is V(min(720*DEG2RAD,B:x/MOI:x*ROTATION_STOP_TIME),
+                        min(720*DEG2RAD,B:y/MOI:y*ROTATION_STOP_TIME),
+                        min(2*720*DEG2RAD,B:z/MOI:z*ROTATION_STOP_TIME))*AG_warp.
 
         if direct_mode {
             set pratePID:SETPOINT to -sat(DEG2RAD*u1,wmax:x).
@@ -487,23 +498,18 @@ function ap_orb_w {
             set rratePID:SETPOINT to -omega_v:z*wmax:z.
         }
 
+        // consistent control input, ensure critical damping
+        set pratePID:KP to PR_KP/wmax:x*AG_warp.
+        set pratePID:KI to ((pratePID:KP)^2*(B:x/MOI:x/4)).
+        set yratePID:KP to YR_KP/wmax:y*AG_warp.
+        set yratePID:KI to ((yratePID:KP)^2*(B:y/MOI:y/4)).
+        set rratePID:KP to RR_KP/wmax:z*AG_warp.
+        set rratePID:KI to ((rratePID:KP)^2*(B:z/MOI:z/4)).
 
+        set SHIP:CONTROL:PITCH to -pratePID:update(time:seconds, omega:x).
+        set SHIP:CONTROL:YAW to yratePID:update(time:seconds, omega:y).
+        set SHIP:CONTROL:ROLL to -rratePID:update(time:seconds, omega:z).
 
-        local AG_warp is (choose 0.33 if AG else 1.0)/kuniverse:timewarp:rate.
-
-        set pratePID:minoutput to -B:x/AG_warp/MOI:x.
-        set pratePID:maxoutput to B:x/AG_warp/MOI:x.
-        set yratePID:minoutput to -B:y/AG_warp/MOI:y.
-        set yratePID:maxoutput to B:y/AG_warp/MOI:y.
-        set rratePID:minoutput to -B:z/AG_warp/MOI:z.
-        set rratePID:maxoutput to B:z/AG_warp/MOI:z.
-
-        set SHIP:CONTROL:PITCH to -(MOI:x*pratePID:update(time:seconds, omega:x) + A:x)/B:x*AG_warp.
-        set SHIP:CONTROL:YAW to (MOI:y*yratePID:update(time:seconds, omega:y) + A:y)/B:y*AG_warp.
-        set SHIP:CONTROL:ROLL to -(MOI:z*rratePID:update(time:seconds, omega:z) + A:z)/B:z*AG_warp.
-
-
-        
         if (true) { // pitch debug
             util_hud_push_left( "ap_orb_wx",
                 char(10) + "ppid" + " " + round_dec(pratePID:KP,2) + " " + round_dec(pratePID:KI,2) + " " + round_dec(pratePID:KD,2) +
@@ -518,7 +524,7 @@ function ap_orb_w {
                 char(10) + "yact" + " " + round_dec(RAD2DEG*omega:y,1) +
                 char(10) + "yerr" + " " + round_fig(RAD2DEG*yratePID:ERROR,1) ).
         }
-        if (false) { // roll debug
+        if (true) { // roll debug
             util_hud_push_left( "ap_orb_wz",
                 char(10) + "rpid" + " " + round_dec(rratePID:KP,2) + " " + round_dec(rratePID:KI,2) + " " + round_dec(rratePID:KD,2) +
                 char(10) + "rask" + " " + round_dec(RAD2DEG*rratePID:SETPOINT,1) + "/" + round_dec(RAD2DEG*wmax:z,1) +
