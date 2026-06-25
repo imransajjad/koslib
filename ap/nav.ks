@@ -93,7 +93,8 @@ function ap_nav_display {
 
     } else if AP_NAV_IN_ORBIT and defined AP_NAV_ORB_ENABLED and ap_nav_orb_mannode() {
         set DISPLAY_ORB to true.
-
+    } else if AP_NAV_IN_ORBIT and defined AP_NAV_ORB_ENABLED and ap_nav_orb_stick() {
+        set DISPLAY_ORB to true.
     } else if defined AP_NAV_MISSILE_ENABLED and ap_nav_missile_guide() {
         set DISPLAY_MIS to true.
 

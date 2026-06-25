@@ -23,10 +23,10 @@
 
                 "K_ORB_ENGINE_FORE", 0.5,
                 
-                "R_KP", 3,
-                "R_KI", 5,
-                "R_KD", 0,
+                "R_KP", 7,
 
+                "RR_KP", 14,
+                "ROTATION_STOP_TIME", 3.0,
 
                 "K_AERO_PITCH", 10.0,
                 "K_PITCH", 0.5,

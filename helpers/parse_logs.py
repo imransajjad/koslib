@@ -130,7 +130,7 @@ class PlotStore:
         self.plot_from_keys(D,"lng",["h"], events_ykeys=["h"])
     
     def plot_q_e(self, D):
-        self.plot_from_keys(D,"y0",["h"])
+        self.plot_from_keys(D,"y0",["h"], events_ykeys=["h"])
         self.plot_from_keys(D,"t",["q","q_simp","E_srf_s"])
         self.plot_from_keys(D,"t",["h","y0"], events_ykeys=["h","y0"])
     
@@ -161,6 +161,46 @@ class PlotStore:
         self.plot_from_keys(D,"t",["faerox_vel","faeroy_vel","faeroz_vel"], events_ykeys=["faeroy_vel"])
         self.plot_from_keys(D,"q",["faerox_vel","faeroy_vel","faeroz_vel"], events_ykeys=["faeroy_vel"])
         self.plot_from_keys(D,"y0",["faerox_vel","faeroy_vel","faeroz_vel","p_faerox_vel","p_faeroy_vel","p_faeroz_vel"])
+    
+    def plot_acc(self, D):
+
+        # ksp_rotation(A["p"],A["y"],A["r"]).inv()
+        self.plot_from_keys(D,"t",["opx","opy","opz"], events_ykeys=["opx"])
+
+        op_mag =  np.sqrt(D["opx"]**2 + D["opy"]**2 + D["opz"]**2)
+        op = np.array([D["opx"],D["opy"],D["opz"]]).T
+        print("op shape", op.shape)
+        op_normed = op/op_mag[:,np.newaxis]
+
+        acc = np.array([D["accx"],D["accy"],D["accz"]]).T
+
+        print("acc shape", acc.shape)
+        print("op_mag shape", op_mag.shape)
+        print("op shape", op.shape)
+        print("op_normed shape", op_normed.shape)
+
+
+        D["aup"] = -np.diag(np.matmul(op_normed,np.transpose(acc)))
+        print("aup shape", D["aup"].shape)
+
+        a_gnd = acc + (D["aup"][:,np.newaxis]*op_normed)
+        print("a_gnd shape", a_gnd.shape)
+        print("a_gnd[:,0] shape", a_gnd[:,0].shape)
+
+        
+
+        D["agnd"] = np.sqrt(a_gnd[:,0]**2 + a_gnd[:,1]**2 + a_gnd[:,2]**2)
+
+        D["acc_mag"] =  np.sqrt(D["accx"]**2 + D["accy"]**2 + D["accz"]**2)
+        D["acc_gdir"] =  np.atan2(D["aup"], D["agnd"])
+
+
+        self.plot_from_keys(D,"t",["acc_mag"], events_ykeys=["acc_mag"])
+        self.plot_from_keys(D,"t",["agnd","aup"], events_ykeys=["aup"])
+        self.plot_from_keys(D,"t",["gamma","acc_gdir"], events_ykeys=["gamma"])
+        self.plot_from_keys(D,"agnd",["aup"], events_ykeys=["aup"])
+
+
 
     def plot_other(self, D):
 
@@ -188,7 +228,7 @@ class PlotStore:
 
 
     def plot_q_grid(self, max_v, max_h):
-        P = self.get_plot("y0",["h","q"])
+        P = self.get_plot("y0",["h"])
         vel = np.arange(10,max_v,10)
         for q in np.logspace(-5,0.1,10):
             P.plot(vel, 5000*np.log(0.00000840159/2/q*vel*vel))
@@ -248,7 +288,7 @@ class RLSfir:
         self.exes = np.concatenate( (np.array([[x]]),self.exes[:,:-1]), axis=1 )
 
         self.Q = self.ffactor*self.Q
-        y_predicted = self.exes @ self.w
+        y_predicted = self.prev_y + self.exes @ self.w
         if np.abs(x) > self.noise_floor:
             self.Q += np.transpose(self.exes)*self.exes
             self.w = self.w + np.linalg.solve(self.Q, np.transpose(self.exes) @ ( np.array([[y]]) - y_predicted ))
@@ -322,29 +362,43 @@ def main():
         if args.preset == "orbit":
             kspp.do_ship_math(D)
             P.plot_w_controls(D)
+        
+        if args.preset == "launch":
+            kspp.do_ship_math(D)
+            kspp.do_vel_math(D)
+
+            P.plot_ground_pos(D)
+            P.plot_q_e(D)
+            P.plot_w_controls(D)
+            P.plot_acc(D)
+
+            P.plot_q_grid(2500,80000)
+            P.plot_rwy()
 
         if args.preset == "rls_orbit":
             kspp.do_ship_math(D)
-            N = 2
+            N = 4
 
             w_keys = [f"rls_w{i}" for i in range(0,N)]
 
-            D["y1diff"] = kspp.derivative2(D["t"], D["y1"])
+            D["y1diff"] = kspp.derivative_causal(D["t"], D["y1"])
 
-            w, y_pre = RLSfir(N, 0.999, noise_floor=0.05).solve(D["y1diff"], D["u1"])
+            w, y1_pre = RLSfir(N, 0.9999, noise_floor=0.005).solve(D["y1"], D["u1"])
 
             for i, w_key in enumerate(w_keys):
                 D[w_key] = w[:,i]
             
-            D["y1diff_pre"] = y_pre[:,0]
+            D["y1_pre"] = y1_pre[:,0]
+            # D["y1_pre"] = kspp.integrate_causal(D["t"], D["y1diff_pre"])
+
 
             print("w_rls", w[-1,:])
-            print("w_ls", least_squares_fir(N, D["y1diff"], D["u1"]))
+            print("w_ls", least_squares_fir(N, D["y1"], D["u1"]))
 
             # P.plot_from_keys(D, "t", ["u1", "y1"])
             P.plot_from_keys(D, "t", w_keys)
             # P.plot_from_keys(D, "t", ["u1", "y1"] + w_keys + ["y1diff_pre"])
-            P.plot_from_keys(D, "t", ["u1", "y1", "y1diff", "y1diff_pre"])
+            P.plot_from_keys(D, "t", ["u1", "y1", "y1diff", "y1_pre"])
 
 if __name__ == '__main__':
     main()

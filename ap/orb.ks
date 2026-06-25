@@ -147,6 +147,9 @@ local function pwm_alivezone {
 local function get_max_rrates {
 
     if ship:q < MIN_SEA_Q {
+        local MOI is get_moment_of_inertia().
+        local B is ap_get_control_bu().
+
         return V(90,90,360)*DEG2RAD.
     }
     else
@@ -164,12 +167,12 @@ local function get_max_rrates {
         if GLIM {
             local prate_max is max(min_rate, (MAXG - g0*cos(vel_pitch)*cos(roll))/ship:airspeed ).
             local yrate_max is max(min_rate, MAXG/ship:airspeed ).
-            local rrate_max is 5.0*max(min_rate, MAXG/ship:airspeed ).
+            local rrate_max is 15.0*max(min_rate, MAXG/ship:airspeed ).
             return V(prate_max, yrate_max, rrate_max).
         } else {
-            local prate_max is max(30*DEG2RAD, (loadfactor*fake_wing_area - g0*cos(vel_pitch)*cos(roll))/ship:airspeed ).
-            local yrate_max is max(30*DEG2RAD, loadfactor*fake_wing_area/ship:airspeed ).
-            local rrate_max is 5.0*max(30*DEG2RAD, loadfactor*fake_wing_area/ship:airspeed ).
+            local prate_max is max(5*DEG2RAD, (loadfactor*fake_wing_area - g0*cos(vel_pitch)*cos(roll))/ship:airspeed ).
+            local yrate_max is max(5*DEG2RAD, loadfactor*fake_wing_area/ship:airspeed ).
+            local rrate_max is 15.0*max(15*DEG2RAD, loadfactor*fake_wing_area/ship:airspeed ).
             return V(prate_max, yrate_max, rrate_max).
         }
 
@@ -337,6 +340,11 @@ function ap_orb_rcs_dv {
     return RCS_MAX_DV.
 }
 
+function ap_orb_min_dv {
+    parameter thrust_vector.
+    return 0.02*ap_me_get_thrust()*(thrust_vector:normalized)/ship:mass.
+}
+
 function ap_orb_nav_do {
     parameter vel_vec is AP_NAV_VEL. // defaults are globals defined in AP_NAV
     parameter acc_vec is AP_NAV_ACC.
@@ -347,96 +355,103 @@ function ap_orb_nav_do {
     local delta_v is (vel_vec - ap_nav_get_vessel_vel()).
     local delta_a is (acc_vec - GRAV_ACC).
 
-    if not SAS {
+    // have threshold on rcs dv where direction doesn't matter
 
-        // decide if we want to use the main engine and adjust orientation accordingly
+
+    // At the end, we should have me_throttle, omega and rcs_move
+    // decide if we want to use the main engine and adjust orientation accordingly
+
+    local me_throttle is 0.
+    local w_me is V(0,0,0).
+    // get me_throttle, w_me
+    if (RCS_MAX_DV = 0) or // get rid of this =0 check
+        (delta_v:mag < ap_me_get_dv():mag and delta_v:mag > RCS_MAX_DV) {
         local thrust_vector is ap_me_get_thrust().
         local me_delta_v is (ship:facing*thrust_vector:normalized)*delta_v.
         local me_align is me_delta_v/max(0.0001,delta_v:mag).
+        local omega is -1*vcrs(delta_v:normalized, ship:facing*thrust_vector:normalized).
+        local omega_mag is vectorAngle(delta_v:normalized, ship:facing*thrust_vector:normalized).
+        local me_head_error is (-ship:facing)*angleaxis( omega_mag, omega:normalized )*ship:facing.
 
-        local turn_to_engine is false.
-        
-        if thrust_vector:mag > 0 and delta_v:mag > 0 {
-            // 
-            local omega is -1*vcrs(delta_v:normalized, ship:facing*thrust_vector:normalized).
-            local omega_mag is vectorAngle(delta_v:normalized, ship:facing*thrust_vector:normalized).
-            set head_dir to angleaxis( omega_mag, omega:normalized )*ship:facing.
-            set turn_to_engine to true.
-        }
-        local me_throttle is choose K_ORB_ENGINE_FORE*me_delta_v if (me_align > 0.9848) else 0.
-        // get me_throttle
+        set me_throttle to choose K_ORB_ENGINE_FORE*me_delta_v if (me_align > 0.9848) else 0.
+        set w_me to V(K_PITCH*wrap_angle(me_head_error:pitch), K_YAW*wrap_angle(me_head_error:yaw),0).
+    }
 
-        // dv_aero is part of delta_v that can be "steered" by aero  
+    // dv_aero is part of delta_v that can be "steered" by aero
+    local w_aero is V(0,0,0).
+    local a_applied is V(0,0,0).
+    if ship:q > 0.01 {
         local dv_aero is vectorexclude(ship:velocity:surface, delta_v).
         local D is abs(ship:q*get_wing_area()*cl_sched(ship:airspeed)*cos(2*alpha)*cos(2*beta)/ship:mass/ship:airspeed).
         local D_a is abs(ship:q*get_wing_area()*cl_sched(ship:airspeed)/ship:mass).
 
-        local a_applied is D_a*(cos(alpha)*sin(alpha)*ship_vel_dir:topvector + cos(beta)*sin(beta)*ship_vel_dir:starvector).
+        set a_applied to D_a*(cos(alpha)*sin(alpha)*ship_vel_dir:topvector + cos(beta)*sin(beta)*ship_vel_dir:starvector).
 
-        local vw is K_AERO_PITCH*(dv_aero - a_applied/max(0.05,D)) + GRAV_ACC.
-        local w_v is (-ship:facing)*vcrs(ship:velocity:surface:normalized, vw)/max(0.001,ship:airspeed)*RAD2DEG.
-        // get w_v
+        local k_aero_scheduled is K_AERO_PITCH*ship:q/1.00.
+        local vw is k_aero_scheduled*(dv_aero) - a_applied/max(0.05,D) + GRAV_ACC. // omega*velocity
+        set w_aero to (-ship:facing)*vcrs(ship:velocity:surface:normalized, vw)/max(0.001,ship:airspeed)*RAD2DEG.
+    }
 
-        // use head_error to figure out how much to turn for orientation
+
+    // use head_error to figure out how much to turn for orientation
+    local w_head is V(0,0,0).
+    if (true) {
         local head_error is (-ship:facing)*head_dir.
         set total_head_align to 0.5*head_error:forevector*V(0,0,1) + 0.5*head_error:starvector*V(1,0,0).
         set ALIGNED to total_head_align >= RCS_MIN_ALIGN.
-        local w_head is V(K_PITCH*wrap_angle(head_error:pitch), K_YAW*wrap_angle(head_error:yaw),0).
-        // ignore roll first
-        set w_head:z to choose K_ROLL*wrap_angle(head_error:roll) if w_head:mag < 2.5 else 0.
-        // get w_head
+        set w_head to V(K_PITCH*wrap_angle(head_error:pitch),
+                        K_YAW*wrap_angle(head_error:yaw),
+                        K_ROLL*wrap_angle(head_error:roll)).
+    }
 
-        // decide what can be done with rcs
-        // local rcs_dv is delta_v:normalized*min(delta_v:mag,RCS_MAX_DV).
-        local rcs_dv is delta_v.
+    // decide what can be done with rcs
+    local rcs_dv is delta_v:normalized*min(delta_v:mag,RCS_MAX_DV).
 
-        if me_throttle > 0 {
-            set rcs_dv to vectorexclude(ap_me_get_thrust(), rcs_dv).
-        }
-        local rcs_move is V(
-                pwm_alivezone(K_RCS_STARBOARD*(ship:facing:starvector*rcs_dv) ),
-                pwm_alivezone(K_RCS_TOP*(ship:facing:topvector*rcs_dv) ),
-                pwm_alivezone(K_RCS_FORE*(ship:facing:forevector*rcs_dv) )).
-
+    if me_throttle > 0 {
+        set rcs_dv to vectorexclude(ap_me_get_thrust(), rcs_dv).
+    }
+    local rcs_move is V(
+            pwm_alivezone(K_RCS_STARBOARD*(ship:facing:starvector*rcs_dv) ),
+            pwm_alivezone(K_RCS_TOP*(ship:facing:topvector*rcs_dv) ),
+            pwm_alivezone(K_RCS_FORE*(ship:facing:forevector*rcs_dv) )).
 
 
-        // now use me_throttle, w_v, w_head, rcs_move
-        local w_error is choose w_head if turn_to_engine else w_v.
+    // now use me_throttle, w_v, w_head, rcs_move
+    local w_error is w_aero + w_me + w_head.
 
-        local min_dv is RCS_MAX_DV.
-        if (ship:control:mainthrottle > 0) {
-            set min_dv to 0.01*RCS_MAX_DV. // add some hysteresis
-        }
-        if delta_v:mag > min_dv and ship:availablethrust > 0 {
-            ap_me_throttle(me_throttle).
-        } else {
-            ap_me_throttle(0).
-        }
-        ap_orb_w(-w_error:x, w_error:y, -w_error:z, true).
-        set ship:control:translation to rcs_move.
+    // ignore roll if w_err is large enough
+    if (w_error:x + w_error:y > 2.5 ) {
+        set w_error:z to 0.
+    }
 
-        set STEER_RCS to USE_RCS_STEER and not ALIGNED.        
-        set RCS to (rcs_move:mag > 0 or STEER_RCS).
+    ap_me_throttle(me_throttle).
 
-        set last_stage to stage:number.
+    ap_orb_w(-w_error:x, w_error:y, -w_error:z, true).
+    set ship:control:translation to rcs_move.
 
-        if (false) {
-            util_hud_push_left( "ap_orb_nav_do",
-                "|dv| "  + round_dec(delta_v:mag,1) 
-                + char(10) + "dv " + round_vec((-ship:facing)*delta_v,1)
-                + char(10) + "w_v " + round_vec(w_v,1)
-                + char(10) + "w_h " + round_vec(w_head,1)
-                + char(10) + "D " + round_fig(D,3)
-                ).
-            set orb_debug_vec0 to VECDRAW(V(0,0,0), (min(delta_v:mag,10)*delta_v:normalized), RGB(0,1,0),
-                "", 1.0, true, 0.25, true ).
-            set orb_debug_vec1 to VECDRAW(V(0,0,0), (ship:facing*w_v), RGB(0,1,1),
-                "", 1.0, true, 0.25, true ).
-            set orb_debug_vec2 to VECDRAW(V(0,0,0), a_applied, RGB(1,0,0),
-                "", 1.0, true, 0.25, true ).
-            set orb_debug_vec3 to VECDRAW(V(0,0,0), (ship:facing*w_head), RGB(1,0,1),
-                "", 1.0, true, 0.25, true ).
-        }
+    set STEER_RCS to false and USE_RCS_STEER and not ALIGNED.        
+    set RCS to (rcs_move:mag > 0 or STEER_RCS).
+
+    set last_stage to stage:number.
+
+    if (false) {
+        util_hud_push_left( "ap_orb_nav_do",
+            "|dv| "  + round_dec(delta_v:mag,1) 
+            + char(10) + "dv " + round_vec((-ship:facing)*delta_v,1)
+            + char(10) + "w_aero " + round_vec(w_aero,1)
+            + char(10) + "w_me   " + round_vec(w_me,1)
+            + char(10) + "w_head " + round_vec(w_head,1)
+            ).
+    }
+    if (false) {
+        set orb_debug_vec0 to VECDRAW(V(0,0,0), 10*delta_v, RGB(0,1,0),
+            "", 1.0, true, 0.25, true ).
+        set orb_debug_vec1 to VECDRAW(V(0,0,0), (ship:facing*w_aero), RGB(0,1,1),
+            "", 1.0, true, 0.25, true ).
+        set orb_debug_vec2 to VECDRAW(V(0,0,0), a_applied, RGB(1,0,0),
+            "", 1.0, true, 0.25, true ).
+        set orb_debug_vec3 to VECDRAW(V(0,0,0), (ship:facing*w_head), RGB(1,0,1),
+            "", 1.0, true, 0.25, true ).
     }
 }
 
@@ -461,6 +476,9 @@ function ap_orb_w {
     // else they are stick inputs
     // now in ship velocity frame
 
+        // util_hud_push_right("d Tapoapsis",
+        //     "dTAp " + round_dec(get_applied_acc()*ship:body:position:normalized/(-GRAV_ACC*ship:body:position:normalized) - 1,3)).
+
     if SAS {
         if orb_active {
             set orb_active to false.
@@ -469,16 +487,15 @@ function ap_orb_w {
             pratePID:RESET().
             set SHIP:CONTROL:NEUTRALIZE to true.
         }
-    }
-    else
-    {
+    } else {
         set orb_active to true.
 
         local omega is (-ship:facing)*ship:angularvel.
 
         local MOI is get_moment_of_inertia().
-        local B is ap_get_control_bu().
-        local A is control_aalpha() + 0*vcrs( omega, V(MOI:x*omega:x,MOI:y*omega:y,MOI:z*omega:z) ).
+        // local B is ap_get_control_bu().
+        local B is V(1,1,1).
+        // local A is control_aalpha() + 0*vcrs( omega, V(MOI:x*omega:x,MOI:y*omega:y,MOI:z*omega:z) ).
 
         local AG_warp is (choose 0.2 if AG else 1.0)/kuniverse:timewarp:rate.
 
@@ -510,7 +527,7 @@ function ap_orb_w {
         set SHIP:CONTROL:YAW to yratePID:update(time:seconds, omega:y).
         set SHIP:CONTROL:ROLL to -rratePID:update(time:seconds, omega:z).
 
-        if (true) { // pitch debug
+        if (false) { // pitch debug
             util_hud_push_left( "ap_orb_wx",
                 char(10) + "ppid" + " " + round_dec(pratePID:KP,2) + " " + round_dec(pratePID:KI,2) + " " + round_dec(pratePID:KD,2) +
                 char(10) + "pask" + " " + round_dec(RAD2DEG*pratePID:SETPOINT,1) + "/" + round_dec(RAD2DEG*wmax:x,1) +
@@ -524,7 +541,7 @@ function ap_orb_w {
                 char(10) + "yact" + " " + round_dec(RAD2DEG*omega:y,1) +
                 char(10) + "yerr" + " " + round_fig(RAD2DEG*yratePID:ERROR,1) ).
         }
-        if (true) { // roll debug
+        if (false) { // roll debug
             util_hud_push_left( "ap_orb_wz",
                 char(10) + "rpid" + " " + round_dec(rratePID:KP,2) + " " + round_dec(rratePID:KI,2) + " " + round_dec(rratePID:KD,2) +
                 char(10) + "rask" + " " + round_dec(RAD2DEG*rratePID:SETPOINT,1) + "/" + round_dec(RAD2DEG*wmax:z,1) +

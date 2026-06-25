@@ -46,6 +46,7 @@ until false {
     }
 
     if AP_MODE_PILOT {
+        ap_me_throttle().
         ap_orb_w().
     } else if AP_MODE_NAV {
         ap_orb_nav_do().

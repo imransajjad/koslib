@@ -8,7 +8,7 @@ set AP_MODE_PILOT_ENABLED to true.
 // pilot mode is always available
 
 set AP_MODE_VEL_ENABLED to get_param(PARAM,"VEL_ENABLED", false ).
-set AP_MODE_NAV_ENABLED to get_param(PARAM,"NAV_ENABLED", false ).
+set AP_MODE_NAV_ENABLED to get_param(PARAM,"NAV_ENABLED", true ).
 set AP_MODE_NONE_ENABLED to get_param(PARAM,"NONE_ENABLED", false ).
 
 // AP MODE STUFF

@@ -255,6 +255,8 @@ local moi_stage is stage:number.
 local moi_cross is V(0,0,0). // V(xy, yz, xz)
 local moi_mass is ship:mass.
 local MOI_Q is V(1,1,1). // this is effectively inverse covariance matrix (power in measurement)
+
+// same low pass filter on both input and output will help
 local function init_moi {
     // some MOI_spec calculations from scratch
     
@@ -292,7 +294,7 @@ local function moi_update {
     set MOI_Q to 1/(1 + (moi_mass - ship:mass)^2)*MOI_Q.
     set MOI to (ship:mass/moi_mass)*MOI.
     set moi_mass to ship:mass.
-
+    
 
     // consider changing 0.05 to 0.95, i.e. only adapt in saturation.
     // Then choose auto gains to be damped but aggressive
@@ -357,7 +359,10 @@ local function display_udpate {
             char(10) + "A_fues " + round_fig(A_fues,3) +
             char(10) + "MOI:x " + round_fig(MOI:x,3) +
             char(10) + "MOI:y " + round_fig(MOI:y,3) +
-            char(10) + "MOI:z " + round_fig(MOI:z,3)).
+            char(10) + "MOI:z " + round_fig(MOI:z,3) +
+            char(10) + "MOI_Q:x " + round_fig(MOI_Q:x,3) +
+            char(10) + "MOI_Q:y " + round_fig(MOI_Q:y,3) +
+            char(10) + "MOI_Q:z " + round_fig(MOI_Q:z,3)).
     } else {
         util_hud_pop_left("util_phys").
     }

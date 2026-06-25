@@ -90,6 +90,22 @@ def ksp_rotation(pitch,yaw,roll):
 
     return scipyR.from_euler('zxy', np.array([roll,pitch,yaw]).T,  degrees=False)
 
+def derivative_causal(t,x):
+    t_past = np.roll(t,-1)
+    t_past[-1] = 0
+    
+    x_past = np.roll(x,-1)
+    x_past[-1] = 0
+
+    return (x-x_past)/(t-t_past)
+
+def integrate_causal(t,x, x_init=0):
+    t_past = np.roll(t,-1)
+    t_past[-1] = 0
+
+    dxs = -x*(t-t_past)
+    return np.cumsum(dxs) + x_init
+
 def derivative1(t,x):
     t_left = np.roll(t,-1)
     t_right = np.roll(t,+1)
